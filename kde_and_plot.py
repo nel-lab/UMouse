@@ -39,7 +39,7 @@ positions = np.vstack([xx.ravel(), yy.ravel()])
 values = np.vstack([embedding_df.iloc[:,0], embedding_df.iloc[:,1]])
 
 # calculate kde from tsne 2dim data
-bw_val = 0.1
+bw_val = 0.15
 kernel = gaussian_kde(values, bw_method = bw_val)
 f = np.reshape(kernel(positions).T, xx.shape)
 

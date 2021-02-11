@@ -12,8 +12,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
+
 # open the data. In dictionary format. 
 mat_data = loadmat('D:/data/Behavior data/RW_data/trackingData_181215_003.mat')
+
 #%%  unpack dctionary
 
 # keys: obstacleTimes, paws, paws_pixels, rewardTimes, t

@@ -5,17 +5,20 @@ Script for plotting different decomposition and clustering analyses of Richard W
 locomotion data. Data involves a headfixed animal on a running wheel with an occasional
 obstacle and reward. 
 
+modified Jimmy's code for decomposition comparison, n nearest neighbors, and plotting trajectories 
+so that it works with Richard's data. 
+
 @author: Jake
 """
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from behavelet import wavelet_transform
 from numpy import genfromtxt
 from sklearn.decomposition import PCA, NMF, KernelPCA, FastICA
 from sklearn.manifold import TSNE
-from sklearn import preprocessing
+from sklearn.cluster import KMeans
 from mpl_toolkits import mplot3d
+import cv2
 
 # Set path
 data_dir = 'D:/data/Behavior data/RW_data/'
@@ -24,25 +27,33 @@ data_dir = 'D:/data/Behavior data/RW_data/'
 trackingDf = pd.read_csv('D:/data/Behavior data/RW_data/trackingDf.csv')
 pawsRS = genfromtxt('D:/data/Behavior data/RW_data/trackingArray.csv', delimiter=',')
 
-#%% wavelet analysis
-#freqs, power, X_new = wavelet_transform(pawsRS[1:, :], n_freqs=25, fsample=250., fmin=1., fmax=50.)
-#np.savetxt("D:/data/Behavior data/RW_data/freqsArray.csv", freqs, delimiter=",")
-#np.savetxt("D:/data/Behavior data/RW_data/powerArray.csv", power, delimiter=",")
-#np.savetxt("D:/data/Behavior data/RW_data/X_newArray.csv", X_new, delimiter=",")
+#%% Morlet wavelet analysis
 
+#from behavelet import wavelet_transform
+#freqs, power, X_new = wavelet_transform(pawsRSNorm[1:, :], n_freqs=25, fsample=250., fmin=1., fmax=50.)
+#np.savetxt("D:/data/Behavior data/RW_data/freqsArrayScaled.csv", freqs, delimiter=",")
+#np.savetxt("D:/data/Behavior data/RW_data/powerArrayScaled.csv", power, delimiter=",")
+#np.savetxt("D:/data/Behavior data/RW_data/X_newArrayScaled.csv", X_new, delimiter=",")
+
+#%%  plot the behavelet data 
+#plt.figure()
+#plt.imshow(X_new.values[:50000,:].T, aspect='auto')
+#plt.title('Behavelet output with mean removed but no std scaling')
+
+#X_new mean = 0.00284309  Unscaled
 #%% OPTIONAL - shortcut if you have already performed behavelet
-freqs = pd.read_csv('D:/data/Behavior data/RW_data/freqsArray.csv')
-power = pd.read_csv('D:/data/Behavior data/RW_data/powerArray.csv')
+#freqs = pd.read_csv('D:/data/Behavior data/RW_data/freqsArray.csv')
+#power = pd.read_csv('D:/data/Behavior data/RW_data/powerArray.csv')
 X_new = pd.read_csv('D:/data/Behavior data/RW_data/X_newArray.csv')
 
 #%% compare decomposition methods
 
-comp = 3
+c
 
 p = PCA(n_components=comp)
-n = NMF(n_components=comp, max_iter=500, alpha=200)
+n = NMF(n_components=comp, max_iter=500, alpha=2)
 t = TSNE(n_components=comp-1)
-k = KernelPCA(n_components=comp, kernel='poly')
+k = KernelPCA(n_components=comp)
 f = FastICA(n_components=comp, max_iter=1000)
 
 downsample=50
@@ -52,10 +63,6 @@ nmf  = n.fit_transform(X_new[::downsample])
 tsne = t.fit_transform(X_new[::downsample])
 kpca = k.fit_transform(X_new[::downsample])
 fica = f.fit_transform(X_new[::downsample])
-
-dim_red = [pca,nmf,tsne,kpca,fica]
-
-name = ["pca","nmf","tsne","kpca","fica"]
 
 #save frame IDs for each downsampled value
 PCA_points_ix = np.array(list(range(0, len(X_new), downsample)))
@@ -101,91 +108,144 @@ PC_labels[0, [np.where(obstEarly.T[PCA_points_ix] ==1)]] = 2
 PC_labels[0, [np.where(obstMid.T[PCA_points_ix] ==1)]] = 3
 PC_labels[0, [np.where(obstLate.T[PCA_points_ix] ==1)]] = 4
 
-#%% PLOT 3D color coded PCs
-scores_plot = pca
-fig = plt.figure()
-ax = plt.axes(projection='3d', title='First 3 PCs for behavelet locomotion data')
+#np.savetxt("D:/data/Behavior data/RW_data/bx_label_array.csv", PC_labels, delimiter=",")
 
-#ax.scatter(*scores.T[:,[np.where(PC_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
+#%% PLOT 3D color coded PCs
+
+scores_plot = pca
+
+fig = plt.figure()
+ax = plt.axes(projection='3d', title='pca First 3 PCs for behavelet locomotion data.')
+
+#ax.scatter(*scores_plot.T[:,[np.where(PC_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
 ax.scatter(*scores_plot.T[:,[np.where(PC_labels==1)[1]]], c='c', marker='o', alpha=0.2) #reward
 ax.scatter(*scores_plot.T[:,[np.where(PC_labels==2)[1]]], c='g', marker='o', alpha=0.2) #obst1/3
 #ax.scatter(*scores_plot.T[:,[np.where(PC_labels==3)[1]]], c='b', marker='o', alpha=0.2)
-ax.scatter(*scores_plot.T[:,[np.where(PC_labels==4)[1]]], c='r', marker='o', alpha=0.2)
+ax.scatter(*scores_plot.T[:,[np.where(PC_labels==4)[1]]], c='k', marker='o', alpha=0.2)
 
 ax.set_xlabel('Dim 1')
 ax.set_ylabel('Dim 2')
 ax.set_zlabel('Dim 3')
 
-pickle.dump(fig, open('FigureObject.fig.pickle', 'wb')) 
-#modify kernels, alpha and gamma for kpca
-#try tsne in 2 dimensions
-#prioritize getting movement traces
-#
+#%% Run kmeans on the pca output
 
-#%% 2 dim plotting for tsne
-scores_plot = tsne
+clus = 6
+
+cluster = KMeans(n_clusters = clus)
+kmeans = cluster.fit(pca)  #labels_    cluster_centers_
+    
+fig_all = plt.figure()
+ax = plt.axes(projection='3d', title='kmeans clustering of pca data. clusters='+str(clus))
+
+y_kmeans = kmeans.predict(pca)
+plt.scatter(x=pca[:,0], y=pca[:,1], zs=pca[:,2], c=y_kmeans, s=50, alpha=0.05, cmap='viridis')
+ax.scatter(*kmeans.cluster_centers_.T, c='k', marker='x')
+
+#%% try a gaussian low pass filter on tsne output
+tsneRound = tsne.astype(int)
+tsneMin = np.min(tsneRound, axis=0)
+tsneMax = np.max(tsneRound, axis=0)
+
+tsneNonNeg = tsneRound
+tsneNonNeg[:,0] += abs(tsneMin[0])
+tsneNonNeg[:,1] += abs(tsneMin[1])
+
+tsneImg = np.zeros([160,160]) 
+for pixInd in range(0,len(tsneNonNeg)): 
+    tsneImg[tsneNonNeg[pixInd,0], tsneNonNeg[pixInd,1]] += 1
+
+tsneImgGauss = cv2.GaussianBlur(tsneImg, (51,51), 0)
+
 fig = plt.figure()
-ax = plt.axes(title='First dims for tsne for behavelet locomotion data')
+plt.imshow( tsneImgGauss )
+plt.title('tsne outputs passed through gaussian filter (51,51)')
+plt.colorbar()
 
-#ax.scatter(*scores.T[:,[np.where(PC_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
-ax.scatter(*scores_plot.T[:,[np.where(PC_labels==1)[1]]], c='c', marker='o', alpha=0.2) #reward
-ax.scatter(*scores_plot.T[:,[np.where(PC_labels==2)[1]]], c='g', marker='o', alpha=0.2) #obst1/3
-ax.scatter(*scores_plot.T[:,[np.where(PC_labels==3)[1]]], c='b', marker='o', alpha=0.2)
-ax.scatter(*scores_plot.T[:,[np.where(PC_labels==4)[1]]], c='r', marker='o', alpha=0.2)
+#%% TSNE-2dim, Gaussian filter, and kmeans clustering
 
-ax.set_xlabel('Dim 1')
-ax.set_ylabel('Dim 2')
+#treat the heatmap like a 3d image, sort of like a mountain plot. 
+tsneGaussCoords = []
+for Xpix in range(tsneImgGauss.shape[0]):
+    for Ypix in range(tsneImgGauss.shape[1]):
+        if tsneImgGauss[Xpix,Ypix] > 0:
+            tsneGaussCoords.append([Xpix, Ypix, tsneImgGauss[Xpix,Ypix]])
+tsneGaussCoords = np.array(tsneGaussCoords)
+tsneGaussCoordsNorm = tsneGaussCoords
+tsneGaussCoordsNorm[:,2] *= 100
 
-# %% and try nmf and feature agglomeration and random projection 
-# or dictionary learning.    The regularization in nmf may help reduce spurious correlations. Try manipulating alpha during nmf.
-# *kPCA* probably with radial basis function
-# t-sne
-# fast ICA (before or after)
+#run kmeans clustering and get labels 
+clus=9
+tsneCluster = KMeans(n_clusters = clus)
+tsneKmeans = tsneCluster.fit(tsneGaussCoords)
+y_kmeans = tsneKmeans.labels_ #tsneKmeans.predict(tsneGaussCoords)
 
-#checkout sklearn for clustering algos and look up matrix decomposition. 
-#%% 
-#train an svm as a classifier
+#plot as a scatterplot 
+fig_all = plt.figure()
+ax = plt.axes(title='tsne, gaussian, kmeans clustering. clusters='+str(clus))
+plt.scatter(tsneGaussCoords[:,0], tsneGaussCoords[:,1], c=y_kmeans, s=50, alpha=0.4, cmap='viridis')
+ax.scatter(*tsneKmeans.cluster_centers_.T, c='k', marker='x')
 
+#%% TSNE 2dim and kmeans without filter
 
+#run kmeans
+clus=4
+tsneCluster = KMeans(n_clusters = clus)
+tsneKmeans = tsneCluster.fit(tsne)
+y_kmeans = tsneKmeans.labels_ #tsneKmeans.predict(tsne)
 
+#plot outputs colorcoded by cluster ID
+fig_all = plt.figure()
+ax = plt.axes(title='tsne/kmeans clustering. clusters='+str(clus))
+plt.scatter(tsne[:,0], tsne[:,1], c=y_kmeans, s=50, alpha=0.2, cmap='viridis')
+ax.scatter(*tsneKmeans.cluster_centers_.T, c='k', marker='x')
 
+#%% kclosest points to centroids function
 
+def kclosest(k, dim, cluster_centroids):
+    dist = []
 
+    for row in dim:
+        axis_diff = row-cluster_centroids 
+        dist.append(np.linalg.norm(axis_diff, axis=1))
+   
+    dist = np.array(dist)
+    closest = np.argsort(dist, axis=0)
+    ids = closest[:k]
+        
+    return dist, closest, ids
 
+#%% kclosest points
+k = 5
 
+kmeans_dist, kmeans_closest, kmeans_ids = kclosest(k, pca, kmeans.cluster_centers_)
 
+#%% plot traces around kclosest points - paw center 'Z'
+spread=200   # plot k closest frames (+- spread)
+paw_axis = 'Y'
+paws = [col for col in trackingDf.columns if col[-1] == paw_axis]
 
+num_clus = kmeans_ids.shape[1] 
 
+fig, ax = plt.subplots(nrows=num_clus, ncols=kmeans_ids.shape[0])   
+fig.suptitle('pca,'+ ' kmeans, ' + 'paw_axis='+paw_axis, size='x-large') 
 
+for clus in range(num_clus):           
+     for num, i in enumerate(kmeans_ids[:,clus]): 
+                              
+         ax[clus,num].plot(trackingDf.loc[downsample*i-spread:downsample*i+spread+1,paws])  
+         
+         if num==0:                   
+             ax[clus,num].set_ylabel('cluster '+str(clus+1), size='large')  
+         if clus==0:
+             ax[clus,num].set_title('closest: '+str(num+1))
+          
+DPI = fig.get_dpi()
+fig.set_size_inches(1920.0/float(DPI),1080.0/float(DPI))
 
+fig.tight_layout(rect=[0, 0.05, 1, 0.95]) 
 
-
-
-
-#%%
-#import pylab as plt
-fig = plt.figure()
-ax = fig.add_subplot()
-ax.scatter(*scores[800::10].T, c='c', marker='o', alpha=0.1)
-ax.scatter(*scores[50:400:10].T, c='r', marker='o')
-ax.scatter(*scores[400:600:10].T, c='b', marker='o')
-ax.scatter(*scores[600:800:10].T, c='g', marker='o')
-
-#%%
-fig = plt.figure()
-#ax = fig.add_axes()
-plt.scatter(*scores[800::10].T, c='c', marker='o', alpha=0.1)
-plt.scatter(*scores[50:400:10].T, c='r', marker='o')
-plt.scatter(*scores[150000:150400:10].T, c='b', marker='o')
-plt.scatter(*scores[300000:300400:10].T, c='g', marker='o')
-
-
-#%%
-fig = plt.figure()
-plt.plot(scores*100)
-#%%
-plt.figure()
-plt.imshow(new.values[:,:].T, aspect='auto')
+# fig.savefig('/Users/jimmytabet/Desktop/Behavioral Classification Results/Std. Before/traces/'+dic['name']+'/'+c_type, dpi=DPI, bbox_inches='tight')
+#plt.close('all')
 
 
 
