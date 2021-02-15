@@ -19,7 +19,7 @@ from mpl_toolkits import mplot3d
 
 #%% Load spctrographic data and downsample
 
-X_new = pd.read_csv('D:/data/Behavior data/RW_data/X_newArray.csv')
+X_new = pd.read_csv('D:/data/BehaviorData/RW_data/X_newArray.csv')
 downsamp = 25
 XDSamp = X_new[::downsamp]
 
@@ -28,15 +28,15 @@ points_ix = np.array(list(range(0, len(X_new), downsamp)))
 
 #%% save/load DS 25 dataset
 
-#np.savetxt("D:/data/Behavior data/RW_data/behaveletOutDS" + str(downsamp) + '.csv', XDSamp, delimiter=",")
+#np.savetxt("D:/data/BehaviorData/RW_data/behaveletOutDS" + str(downsamp) + '.csv', XDSamp, delimiter=",")
 
 #downsamp = 25
-#XDSamp = pd.read_csv('D:/data/Behavior data/RW_data/behaveletOutDS' + str(downsamp) + '.csv')
+#XDSamp = pd.read_csv('D:/data/BehaviorData/RW_data/behaveletOutDS' + str(downsamp) + '.csv')
 
 #%% Try adding positional data to the spectrographic data for umap input
 
 #from numpy import genfromtxt
-pawsRS = genfromtxt('D:/data/Behavior data/RW_data/trackingArray.csv', delimiter=',')
+pawsRS = genfromtxt('D:/data/BehaviorData/RW_data/trackingArray.csv', delimiter=',')
 pawsRS = np.delete(pawsRS, [0,-1], 0)
 pawsRS = pawsRS[::downsamp]
 #np.concatenate((XDSamp, pawsRS),1)
@@ -71,8 +71,8 @@ ax.scatter(embedding[:,0], embedding[:,1], embedding[:,2], c=embedding[:,2]/9, s
 
 #%% load behavior data and behavior labels 
 
-trackingDf = pd.read_csv('D:/data/Behavior data/RW_data/trackingDf.csv')
-pd.read_csv('D:/data/Behavior data/RW_data/bx_label_array.csv')
+trackingDf = pd.read_csv('D:/data/BehaviorData/RW_data/trackingDf.csv')
+bx_lanels =  pd.read_csv('D:/data/BehaviorData/RW_data/bx_label_array.csv')
 bx_labels = PC_labels
 
 #%% 2 dim plotting for umap. converted from tsne 2dim plotting 

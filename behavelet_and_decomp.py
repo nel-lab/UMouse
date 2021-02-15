@@ -21,19 +21,19 @@ from mpl_toolkits import mplot3d
 import cv2
 
 # Set path
-data_dir = 'D:/data/Behavior data/RW_data/'
+data_dir = 'D:/data/BehaviorData/RW_data/'
 
 #%% access the data
-trackingDf = pd.read_csv('D:/data/Behavior data/RW_data/trackingDf.csv')
-pawsRS = genfromtxt('D:/data/Behavior data/RW_data/trackingArray.csv', delimiter=',')
+trackingDf = pd.read_csv('D:/data/BehaviorData/RW_data/trackingDf.csv')
+pawsRS = genfromtxt('D:/data/BehaviorData/RW_data/trackingArray.csv', delimiter=',')
 
 #%% Morlet wavelet analysis
 
 #from behavelet import wavelet_transform
 #freqs, power, X_new = wavelet_transform(pawsRSNorm[1:, :], n_freqs=25, fsample=250., fmin=1., fmax=50.)
-#np.savetxt("D:/data/Behavior data/RW_data/freqsArrayScaled.csv", freqs, delimiter=",")
-#np.savetxt("D:/data/Behavior data/RW_data/powerArrayScaled.csv", power, delimiter=",")
-#np.savetxt("D:/data/Behavior data/RW_data/X_newArrayScaled.csv", X_new, delimiter=",")
+#np.savetxt("D:/data/BehaviorData/RW_data/freqsArrayScaled.csv", freqs, delimiter=",")
+#np.savetxt("D:/data/BehaviorData/RW_data/powerArrayScaled.csv", power, delimiter=",")
+#np.savetxt("D:/data/BehaviorData/RW_data/X_newArrayScaled.csv", X_new, delimiter=",")
 
 #%%  plot the behavelet data 
 #plt.figure()
@@ -42,9 +42,9 @@ pawsRS = genfromtxt('D:/data/Behavior data/RW_data/trackingArray.csv', delimiter
 
 #X_new mean = 0.00284309  Unscaled
 #%% OPTIONAL - shortcut if you have already performed behavelet
-#freqs = pd.read_csv('D:/data/Behavior data/RW_data/freqsArray.csv')
-#power = pd.read_csv('D:/data/Behavior data/RW_data/powerArray.csv')
-X_new = pd.read_csv('D:/data/Behavior data/RW_data/X_newArray.csv')
+#freqs = pd.read_csv('D:/data/BehaviorData/RW_data/freqsArray.csv')
+#power = pd.read_csv('D:/data/BehaviorData/RW_data/powerArray.csv')
+X_new = pd.read_csv('D:/data/BehaviorData/RW_data/X_newArray.csv')
 
 #%% compare decomposition methods
 
@@ -108,7 +108,13 @@ PC_labels[0, [np.where(obstEarly.T[PCA_points_ix] ==1)]] = 2
 PC_labels[0, [np.where(obstMid.T[PCA_points_ix] ==1)]] = 3
 PC_labels[0, [np.where(obstLate.T[PCA_points_ix] ==1)]] = 4
 
-#np.savetxt("D:/data/Behavior data/RW_data/bx_label_array.csv", PC_labels, delimiter=",")
+#for data that is not downsampled
+# PC_labels[0, [np.where(trackingDf.rewardBool ==1)]] = 1
+# PC_labels[0, [np.where(obstEarly.T ==1)]] = 2
+# PC_labels[0, [np.where(obstMid.T ==1)]] = 3
+# PC_labels[0, [np.where(obstLate.T ==1)]] = 4
+
+#np.savetxt("D:/data/BehaviorData/RW_data/bx_label_array.csv", PC_labels, delimiter=",")
 
 #%% PLOT 3D color coded PCs
 

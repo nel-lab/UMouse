@@ -14,32 +14,50 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat
 
 # open the data. In dictionary format. 
-mat_data = loadmat('D:/data/Behavior data/RW_data/trackingData_181215_003.mat')
+#mat_data = loadmat('D:/data/BehaviorData/RW_data/trackingData_181215_003.mat')
+mat_data = loadmat('D:/data/BehaviorData/RW_data/trackingData_201115_000/trackingData_201115_000.mat')
 
 #%%  unpack dctionary
 
-# keys: obstacleTimes, paws, paws_pixels, rewardTimes, t
+# keys: obstacleTimes, paws, paws_pixels, rewardTimes, t, 
 # Values are numpy arrays
 list(mat_data.keys())
 
 # t converted to t_var. Frame timestamps in seconds.
 np.shape(mat_data['t']) # = (317617, 1)
-tVar = mat_data['t'];
-#np.diff(t_var[0:15], axis=0) #timestamps at roughly 250Hz
-
-#not sure what is on the 2nd dim. Perh
-np.shape(mat_data['obstacleTimes']) # = (179, 2)
-obstTimes = mat_data['obstacleTimes'] #obstacle duration varies ~1-3s in duration
-
-#3D array with dimensions  time, paw#, and ???
+#3D array with dimensions  time, paw#, and axis (XYZ)
 np.shape(mat_data['paws']) # = (317617, 4, 3)
-paws = mat_data['paws'];
-
 np.shape(mat_data['paws_pixels']) # = (317617, 4, 3)
-pawsPixels = mat_data['paws_pixels'];
+np.shape(mat_data['rewardTimes']) # = (61, 1) #inter reward interval varies ~16-25s
 
-np.shape(mat_data['rewardTimes']) # = (61, 1)
-rewardTimes = mat_data['rewardTimes']; #inter reward interval varies ~16-25s
+# obstacle duration varies ~1-3s in duration
+np.shape(mat_data['obstacleTimes']) # = (179, 2)
+tVar = mat_data['t']
+obstTimes = mat_data['obstacleTimes'] 
+paws = mat_data['paws']
+pawsPixels = mat_data['paws_pixels']
+rewardTimes = mat_data['rewardTimes']
+
+# additional keys: 
+# bodyAngles, jaw, lickTimes, vel, whiskerAngle, wiskContactTimes
+mat_data['bodyAngles'].shape #(frame#, 1)
+mat_data['jaw'].shape  #(frame#, 2) #range = 100:127. ~15k NaNs
+mat_data['lickTimes'].shape #(#licks, 1)  vals=timestamps in seconds
+mat_data['vel'].shape #(frame#, 1)
+mat_data['whiskerAngle'].shape  #(frame#, 1)
+mat_data['wiskContactTimes'].shape #(1, Xcontacts) vals=timestamps in seconds
+
+bodyAngles = mat_data['bodyAngles']
+jawVar = mat_data['jaw']
+lickTimes = mat_data['lickTimes']
+velVar = mat_data['vel']
+whiskerAngle = mat_data['whiskerAngle']
+wiskContactTimes = mat_data['wiskContactTimes']
+
+#%% check imaging rate. Should be 250Hz
+
+frame_rate = 1/np.diff(mat_data['t'][0:1000].T).mean()
+assert np.round(frame_rate) == 250
 
 #%% Convert variables into a pandas dataframes
 
@@ -73,8 +91,8 @@ trackingDf.drop(trackingDf.index[0:807], inplace = True)
 pawsRS = pawsRS[807:]
 
 #%% Save dataframe and the array 
-trackingDf.to_csv(path_or_buf = 'D:/data/Behavior data/RW_data/trackingDf.csv', index=False)
-np.savetxt("D:/data/Behavior data/RW_data/trackingArray.csv", pawsRS, delimiter=",")
+trackingDf.to_csv(path_or_buf = 'D:/data/BehaviorData/RW_data/trackingDf.csv', index=False)
+np.savetxt("D:/data/BehaviorData/RW_data/trackingArray.csv", pawsRS, delimiter=",")
 
 #%% Plot values for paws_pixels
 # Seems like dimension 0 is the x value in pixels, dim1 is Ybot, dim2 is YTop. 

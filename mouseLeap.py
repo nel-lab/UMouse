@@ -25,11 +25,11 @@ todaystr = today.strftime("%y") + today.strftime("%m") + today.strftime("%d")
 
 #%% take spectrographic data and downsample by 10
 
-X_new = pd.read_csv('D:/data/Behavior data/RW_data/X_newArray.csv')
+X_new = pd.read_csv('D:/data/BehaviorData/RW_data/X_newArray.csv')
 downsamp = 20
 XDSamp = X_new[::downsamp]
 
-#np.savetxt("D:/data/Behavior data/RW_data/analysisOutputs/mouseLeapSavedVars/XSDamp" + str(downsamp) + todaystr + '.csv', XDSamp, delimiter=",")
+#np.savetxt("D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/XSDamp" + str(downsamp) + todaystr + '.csv', XDSamp, delimiter=",")
 
 #%% perform UMAP on downsampled data
 
@@ -37,7 +37,7 @@ reducer = umap.UMAP(n_neighbors=25, min_dist=0.05)
 mapper = reducer.fit(XDSamp)
 embedding = mapper.embedding_
 
-#mapper_fn = "D:/data/Behavior data/RW_data/analysisOutputs/mouseLeapSavedVars/" + 'umap_mapping_DS_' + str(downsamp) + todaystr 
+#mapper_fn = "D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/" + 'umap_mapping_DS_' + str(downsamp) + todaystr 
 #joblib.dump(mapper, mapper_fn)
 
 #%% Visualize tsne or umap
@@ -46,28 +46,29 @@ fig = plt.figure()
 umap.plot.points(mapper)
 
 #%% load 
-#tsne = pd.read_csv('D:/data/Behavior data/RW_data/tsneOutDS' + str(downsamp) + '_kmeans_subsamp.csv')
+#tsne = pd.read_csv('D:/data/BehaviorData/RW_data/tsneOutDS' + str(downsamp) + '_kmeans_subsamp.csv')
 
 #%% Map remaining data onto the embedding space
 
 embedding_all = reducer.transform(X_new)
 
-#embedding_fn = "D:/data/Behavior data/RW_data/analysisOutputs/mouseLeapSavedVars/" + 'umap_mapping_all_' + todaystr 
+#embedding_fn = "D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/" + 'umap_mapping_all_' + todaystr 
 #joblib.dump(embedding_all, embedding_fn)
 
 #%% Map all embedded points as 2D scatter plot
  
 # 0=other, 1=reward+500ms, 2=obst1/3,   3=obstMid,   4=obstEnd
 fig = plt.figure()
-ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]))
+ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' cyan=reward, black=late obstacle')
 
 # ax.scatter(*embedding_all.T, s=0.1, alpha=0.05)
 
-# ax.scatter(*embedding_all.T[:,[np.where(bx_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
-ax.scatter(*embedding_all.T[:,[np.where(bx_labels==1)[1]]], c='c', marker='o', alpha=0.2) #reward
-ax.scatter(*embedding_all.T[:,[np.where(bx_labels==2)[1]]], c='g', marker='o', alpha=0.2) #obst1/3
-ax.scatter(*embedding_all.T[:,[np.where(bx_labels==3)[1]]], c='b', marker='o', alpha=0.2)
-ax.scatter(*embedding_all.T[:,[np.where(bx_labels==4)[1]]], c='k', marker='o', alpha=0.2)
+# ax.scatter(*embedding_all.T[:,[np.where(PC_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
+
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==2)[1]]], c='g', marker='o', s=0.5, alpha=0.2) #obst1/3
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==3)[1]]], c='b', marker='o', s=0.5, alpha=0.2)
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==4)[1]]], c='k', marker='o', s=0.5, alpha=0.2)
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==1)[1]]], c='c', marker='o', s=0.5, alpha=0.2) #reward
 
 ax.set_xlabel('Dim 1')
 ax.set_ylabel('Dim 2')
@@ -354,7 +355,7 @@ def set_axes(figure, n_rows, n_cols, show_y = False):
 #%% load positional data
 
 from numpy import genfromtxt
-trackingDf = pd.read_csv('D:/data/Behavior data/RW_data/trackingDf.csv')
+trackingDf = pd.read_csv('D:/data/BehaviorData/RW_data/trackingDf.csv')
 trackingDf.drop(labels=[0,len(trackingDf)-1], inplace=True) #remove two frames so it matches the indexing for dim reduction
 
 #%% show traces from each group
@@ -397,7 +398,7 @@ add_subplot_zoom(fig)
 #%% implement behavior montage
 from use_cases.behavior_montage import behavior_montage
 
-raw_video = 'D:/data/Behavior data/RW_data/181215_003 .mp4'
+raw_video = 'D:/data/BehaviorData/RW_data/181215_003 .mp4'
 
 # if hasattr(behavior_montage, 'mov'): del behavior_montage.mov
 
@@ -479,4 +480,4 @@ mont.save('/Users/jimmytabet/Desktop/pca_kmeans.avi')
 #comp = 2
 # t = TSNE(n_components=comp, verbose = 2)
 # tsne = t.fit_transform(XDSamp.iloc[sub_samp,:])
-# np.savetxt("D:/data/Behavior data/RW_data/tsneOutDS" + str(downsamp) + "_kmeans_subsamp.csv", tsne, delimiter=",")
+# np.savetxt("D:/data/BehaviorData/RW_data/tsneOutDS" + str(downsamp) + "_kmeans_subsamp.csv", tsne, delimiter=",")
