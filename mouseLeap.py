@@ -2,12 +2,27 @@
 """
 Created on Tue Jan  5 10:19:27 2021
 
+to run after behavelet_and_decomp.py
+ 
+ perfrom UMAP on a sample of the mwt data. Then embed the remaining frames 
+ into that 2D space. 
+ 
 @author: Jake
 """
-#%% Load modules
+#%% get started
 
+#select the dataset to analyze
+data_fn = 'trackingData_201115_000'
+#data_fn = 'trackingData_181215_003'
+expt_fn = data_fn[-10:]
+
+#set path
+data_dir = 'D:/data/BehaviorData/RW_data/' + data_fn + '/'
+
+#load dependencies
 import pandas as pd
 import numpy as np
+from numpy import genfromtxt
 import seaborn as sns
 import matplotlib.pyplot as plt
 #from sklearn.cluster import KMeans, DBSCAN
@@ -20,15 +35,20 @@ from scipy.stats import gaussian_kde
 import cv2
 from datetime import date
 import joblib
+
 today = date.today()
 todaystr = today.strftime("%y") + today.strftime("%m") + today.strftime("%d")
 
-#%% take spectrographic data and downsample by 10
+#%% load spectrographic data and downsample by XX
 
-X_new = pd.read_csv('D:/data/BehaviorData/RW_data/X_newArray.csv')
+genfromtxt(data_dir + expt_fn + '_mwtXNew.csv', 
+           delimiter=',') 
+
 downsamp = 20
 XDSamp = X_new[::downsamp]
 
+np.savetxt(data_dir + expt_fn + '_XDSamp' + str(downsamp) + '_' + todaystr '.csv', 
+           delimiter=",")
 #np.savetxt("D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/XSDamp" + str(downsamp) + todaystr + '.csv', XDSamp, delimiter=",")
 
 #%% perform UMAP on downsampled data
@@ -40,13 +60,10 @@ embedding = mapper.embedding_
 #mapper_fn = "D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/" + 'umap_mapping_DS_' + str(downsamp) + todaystr 
 #joblib.dump(mapper, mapper_fn)
 
-#%% Visualize tsne or umap
+#%% Visualize umap
 
 fig = plt.figure()
 umap.plot.points(mapper)
-
-#%% load 
-#tsne = pd.read_csv('D:/data/BehaviorData/RW_data/tsneOutDS' + str(downsamp) + '_kmeans_subsamp.csv')
 
 #%% Map remaining data onto the embedding space
 

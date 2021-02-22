@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Nov  3 11:38:04 2020
+
+To be run after open_and_format_RW_data.py
+
 Script for plotting different decomposition and clustering analyses of Richard Warren's
 locomotion data. Data involves a headfixed animal on a running wheel with an occasional
 obstacle and reward. 
@@ -10,6 +13,16 @@ so that it works with Richard's data.
 
 @author: Jake
 """
+
+#select the dataset to analyze
+data_fn = 'trackingData_201115_000'
+#data_fn = 'trackingData_181215_003'
+expt_fn = data_fn[-10:]
+
+#set path
+data_dir = 'D:/data/BehaviorData/RW_data/' + data_fn + '/'
+
+#import dependencies
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,52 +33,61 @@ from sklearn.cluster import KMeans
 from mpl_toolkits import mplot3d
 import cv2
 
-# Set path
-data_dir = 'D:/data/BehaviorData/RW_data/'
-
 #%% access the data
-trackingDf = pd.read_csv('D:/data/BehaviorData/RW_data/trackingDf.csv')
-pawsRS = genfromtxt('D:/data/BehaviorData/RW_data/trackingArray.csv', delimiter=',')
+
+trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') #'D:/data/BehaviorData/RW_data/trackingDf.csv'
+pawsRS = genfromtxt(data_dir + expt_fn + '_pawsArray.csv', delimiter=',') #'D:/data/BehaviorData/RW_data/trackingArray.csv', delimiter=','
 
 #%% Morlet wavelet analysis
 
-#from behavelet import wavelet_transform
-#freqs, power, X_new = wavelet_transform(pawsRSNorm[1:, :], n_freqs=25, fsample=250., fmin=1., fmax=50.)
-#np.savetxt("D:/data/BehaviorData/RW_data/freqsArrayScaled.csv", freqs, delimiter=",")
-#np.savetxt("D:/data/BehaviorData/RW_data/powerArrayScaled.csv", power, delimiter=",")
-#np.savetxt("D:/data/BehaviorData/RW_data/X_newArrayScaled.csv", X_new, delimiter=",")
+#load module and perform transformation
+from behavelet import wavelet_transform
+freqs, power, X_new = wavelet_transform(pawsRS, 
+                                        n_freqs=25, 
+                                        fsample=250., 
+                                        fmin=1., 
+                                        fmax=50.)
 
-#%%  plot the behavelet data 
-#plt.figure()
+#save variables for use later
+np.savetxt(data_dir + expt_fn + '_mwtFreqs.csv', freqs, delimiter=",")
+np.savetxt(data_dir + expt_fn + '_mwtPower.csv', power, delimiter=",")
+np.savetxt(data_dir + expt_fn + '_mwtXNew.csv', X_new, delimiter=",")
+
+#in future iterations I should include one of the jawVars, whiskerAngle, and bodyAngles
+
+#%%  plot the behavelet data
+ 
+plt.figure()
+plt.imshow(X_new[:50000,:].T, aspect='auto')
 #plt.imshow(X_new.values[:50000,:].T, aspect='auto')
-#plt.title('Behavelet output with mean removed but no std scaling')
+plt.title('Behavelet output ' + expt_fn)
+plt.ylabel('Paws * dimensions')
+plt.xlabel('frame # at 250Hz')
 
-#X_new mean = 0.00284309  Unscaled
 #%% OPTIONAL - shortcut if you have already performed behavelet
 #freqs = pd.read_csv('D:/data/BehaviorData/RW_data/freqsArray.csv')
 #power = pd.read_csv('D:/data/BehaviorData/RW_data/powerArray.csv')
-X_new = pd.read_csv('D:/data/BehaviorData/RW_data/X_newArray.csv')
+#X_new = pd.read_csv('D:/data/BehaviorData/RW_data/X_newArray.csv')
 
 #%% compare decomposition methods
 
-c
+# comp = 2
+# p = PCA(n_components=comp)
+# n = NMF(n_components=comp, max_iter=500, alpha=2)
+# t = TSNE(n_components=comp-1)
+# k = KernelPCA(n_components=comp)
+# f = FastICA(n_components=comp, max_iter=1000)
 
-p = PCA(n_components=comp)
-n = NMF(n_components=comp, max_iter=500, alpha=2)
-t = TSNE(n_components=comp-1)
-k = KernelPCA(n_components=comp)
-f = FastICA(n_components=comp, max_iter=1000)
+# downsample=50
 
-downsample=50
+# pca  = p.fit_transform(X_new[::downsample])
+# nmf  = n.fit_transform(X_new[::downsample])
+# tsne = t.fit_transform(X_new[::downsample])
+# kpca = k.fit_transform(X_new[::downsample])
+# fica = f.fit_transform(X_new[::downsample])
 
-pca  = p.fit_transform(X_new[::downsample])
-nmf  = n.fit_transform(X_new[::downsample])
-tsne = t.fit_transform(X_new[::downsample])
-kpca = k.fit_transform(X_new[::downsample])
-fica = f.fit_transform(X_new[::downsample])
-
-#save frame IDs for each downsampled value
-PCA_points_ix = np.array(list(range(0, len(X_new), downsample)))
+# #save frame IDs for each downsampled value
+# PCA_points_ix = np.array(list(range(0, len(X_new), downsample)))
 
 #%% Separate obstacle times into early and late
 
@@ -85,6 +107,7 @@ for bout in range(0, len(obstStart)):
     assert obstStart[bout] < obstEnd[bout]
     
     obstDur = obstEnd[bout] - obstStart[bout]
+    
     #make sure that the duration is divisible by the number of groups. 
     if obstDur % 3 != 0: #trim off the front end of the duration index until no remainder
         obstInd = np.array(range(obstStart[bout] + (obstDur % 3), obstEnd[bout])) 
@@ -98,23 +121,27 @@ for bout in range(0, len(obstStart)):
     obstMid[0][splitInds[1]] = 1
     obstLate[0][splitInds[2]] = 1 
     
-#make labels for each principal component data point
-PC_labels = np.zeros([1,len(pca)])
-# 1 = reward
-PC_labels[0, [np.where(trackingDf.rewardBool[PCA_points_ix] ==1)]] = 1
+# #make labels for each principal component data point
+# PC_labels = np.zeros([1,len(pca)])
+# # 1 = reward
+# PC_labels[0, [np.where(trackingDf.rewardBool[PCA_points_ix] ==1)]] = 1
 
-# 2= early obstacle   3 = mid obstacle   4 = late obstacle
-PC_labels[0, [np.where(obstEarly.T[PCA_points_ix] ==1)]] = 2
-PC_labels[0, [np.where(obstMid.T[PCA_points_ix] ==1)]] = 3
-PC_labels[0, [np.where(obstLate.T[PCA_points_ix] ==1)]] = 4
+# # 2= early obstacle   3 = mid obstacle   4 = late obstacle
+# PC_labels[0, [np.where(obstEarly.T[PCA_points_ix] ==1)]] = 2
+# PC_labels[0, [np.where(obstMid.T[PCA_points_ix] ==1)]] = 3
+# PC_labels[0, [np.where(obstLate.T[PCA_points_ix] ==1)]] = 4
 
-#for data that is not downsampled
-# PC_labels[0, [np.where(trackingDf.rewardBool ==1)]] = 1
-# PC_labels[0, [np.where(obstEarly.T ==1)]] = 2
-# PC_labels[0, [np.where(obstMid.T ==1)]] = 3
-# PC_labels[0, [np.where(obstLate.T ==1)]] = 4
+#Make behavior label for un-downsampled data
+# 1=reward  2= early obstacle   3 = mid obstacle   4 = late obstacle
+PC_labels = np.zeros([1,len(pawsRS)])
+PC_labels[0, [np.where(trackingDf.rewardBool ==1)]] = 1
+PC_labels[0, [np.where(obstEarly.T ==1)]] = 2
+PC_labels[0, [np.where(obstMid.T ==1)]] = 3
+PC_labels[0, [np.where(obstLate.T ==1)]] = 4
 
-#np.savetxt("D:/data/BehaviorData/RW_data/bx_label_array.csv", PC_labels, delimiter=",")
+np.savetxt(data_dir + expt_fn + "_bxLabelsArray.csv", 
+           PC_labels, 
+           delimiter=",")
 
 #%% PLOT 3D color coded PCs
 
@@ -132,6 +159,11 @@ ax.scatter(*scores_plot.T[:,[np.where(PC_labels==4)[1]]], c='k', marker='o', alp
 ax.set_xlabel('Dim 1')
 ax.set_ylabel('Dim 2')
 ax.set_zlabel('Dim 3')
+
+#%% Mostly older code from here on out
+
+#%% 
+
 
 #%% Run kmeans on the pca output
 

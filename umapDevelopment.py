@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jan 12 11:07:25 2021
-
+ 
 @author: Jake
 """
 
@@ -9,6 +9,7 @@ Created on Tue Jan 12 11:07:25 2021
 import seaborn as sns
 import pandas as pd
 import numpy as np
+from numpy import genfromtxt
 import matplotlib.pyplot as plt
 import datashader as ds
 import colorcet as cc
