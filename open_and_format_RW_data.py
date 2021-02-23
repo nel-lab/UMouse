@@ -27,7 +27,7 @@ mat_data = loadmat('D:/data/BehaviorData/RW_data/' + data_fn + '/' + data_fn + '
 # Values are numpy arrays
 list(mat_data.keys())
 
-#check the shape of all the variabels 
+#check the shape of all the variabels  #shape for 201115 = (403912, 4, 3)
 # np.shape(mat_data['t']) # = (317617, 1) # t converted to tVar. Frame timestamps in seconds.
 # np.shape(mat_data['obstacleTimes']) # = (179, 2)
 # np.shape(mat_data['paws']) # = (317617, 4, 3) #3D array with dimensions  time, paw#, and axis (XYZ)

@@ -41,17 +41,53 @@ todaystr = today.strftime("%y") + today.strftime("%m") + today.strftime("%d")
 
 #%% load spectrographic data and downsample by XX
 
-genfromtxt(data_dir + expt_fn + '_mwtXNew.csv', 
-           delimiter=',') 
+X_new = pd.read_csv(data_dir + expt_fn + '_mwtXNew.csv')
+X_new = X_new.to_numpy()
 
 downsamp = 20
 XDSamp = X_new[::downsamp]
 
-np.savetxt(data_dir + expt_fn + '_XDSamp' + str(downsamp) + '_' + todaystr '.csv', 
+np.savetxt(data_dir + expt_fn + '_XDSamp' + str(downsamp) + '_' + todaystr + '.csv', 
+           XDSamp,
            delimiter=",")
 #np.savetxt("D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/XSDamp" + str(downsamp) + todaystr + '.csv', XDSamp, delimiter=",")
 
-#%% perform UMAP on downsampled data
+
+#%% TWO MOUSE EMBEDDING
+#load spectrographic data for two mice and combine into one down sampled array
+
+#select the dataset to analyze
+data_fn1 = 'trackingData_201115_000'
+expt_fn1 = data_fn1[-10:]
+data_fn2 = 'trackingData_181215_003'
+expt_fn2 = data_fn2[-10:]
+
+#set paths
+data_dir1 = 'D:/data/BehaviorData/RW_data/' + data_fn1 + '/'
+#data_dir2 = 'D:/data/BehaviorData/RW_data/' + data_fn2 + '/'
+data_dir2 = 'D:/data/BehaviorData/RW_data/X_newArray_181215_003'
+
+#load spectrographic data
+X_new1 = pd.read_csv(data_dir1 + expt_fn1 + '_mwtXNew.csv')
+#X_new2 = pd.read_csv(data_dir2 + expt_fn2 + '_mwtXNew.csv')
+X_new2 = pd.read_csv(data_dir2 + '.csv')
+
+#downsample and combine data
+downsamp = 40
+XDSamp1 = X_new1[::downsamp]
+XDSamp2 = X_new2[::downsamp]
+XDSampBoth = np.concatenate((XDSamp1, XDSamp2))
+print('XDSampBoth shape = ' + str(XDSampBoth.shape))
+print('XDSamp1 shape = ' + str(XDSamp1.shape))
+print('XDSamp2 shape = ' + str(XDSamp2.shape))
+
+#perform umap embedding
+reducer = umap.UMAP(n_neighbors=25, min_dist=0.05)
+mapper = reducer.fit(XDSampBoth)
+embedding = mapper.embedding_
+
+
+#%% SINGLE MOUSE - perform UMAP on downsampled data
 
 reducer = umap.UMAP(n_neighbors=25, min_dist=0.05)
 mapper = reducer.fit(XDSamp)
@@ -64,28 +100,89 @@ embedding = mapper.embedding_
 
 fig = plt.figure()
 umap.plot.points(mapper)
+plt.title('UMAP embedding: ' + expt_fn + 'DS=' + str(downsamp) + 'with jaw and body angles')
+
+#two mouse embedding
+#plt.title('UMAP embedding: ' + expt_fn1 + ' + ' + expt_fn2 + ' DS=' + str(downsamp))
 
 #%% Map remaining data onto the embedding space
 
 embedding_all = reducer.transform(X_new)
+
+#two-mouse embedding
+#embedding_all = reducer.transform(np.concatenate((X_new1, X_new2)))
 
 #embedding_fn = "D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/" + 'umap_mapping_all_' + todaystr 
 #joblib.dump(embedding_all, embedding_fn)
 
 #%% Map all embedded points as 2D scatter plot
  
+#load labels 
+PC_labels = genfromtxt(data_dir + expt_fn + '_bxLabelsArray.csv', delimiter=',') #'D:/data/BehaviorData/RW_data/trackingArray.csv', delimiter=','
+PC_labels = PC_labels[:-1]
+
 # 0=other, 1=reward+500ms, 2=obst1/3,   3=obstMid,   4=obstEnd
 fig = plt.figure()
-ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' cyan=reward, black=late obstacle')
+ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + expt_fn + ' cyan=reward, black=late obstacle')
 
 # ax.scatter(*embedding_all.T, s=0.1, alpha=0.05)
 
 # ax.scatter(*embedding_all.T[:,[np.where(PC_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
 
-ax.scatter(*embedding_all.T[:,[np.where(PC_labels==2)[1]]], c='g', marker='o', s=0.5, alpha=0.2) #obst1/3
-ax.scatter(*embedding_all.T[:,[np.where(PC_labels==3)[1]]], c='b', marker='o', s=0.5, alpha=0.2)
-ax.scatter(*embedding_all.T[:,[np.where(PC_labels==4)[1]]], c='k', marker='o', s=0.5, alpha=0.2)
-ax.scatter(*embedding_all.T[:,[np.where(PC_labels==1)[1]]], c='c', marker='o', s=0.5, alpha=0.2) #reward
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==2)[0]]], c='g', marker='o', s=0.5, alpha=0.2) #obst1/3
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==3)[0]]], c='b', marker='o', s=0.5, alpha=0.2)
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==4)[0]]], c='k', marker='o', s=0.5, alpha=0.2)
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==1)[0]]], c='c', marker='o', s=0.5, alpha=0.2) #reward
+
+ax.set_xlabel('Dim 1')
+ax.set_ylabel('Dim 2')
+
+
+#%% Plot umap points according to velocity
+
+#two mouse embedding
+
+# #load data and combine booleans
+# trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') 
+# velVar1 = trackingDf['velVar'][:-1] 
+# data_dir2 = 'D:/data/BehaviorData/RW_data/trackingData_181215_003/'
+# trackingDf = pd.read_csv(data_dir2 + expt_fn2 + '_Df.csv')
+# velVar2 = trackingDf['velVar'][:-2]
+# velVar = np.concatenate((velVar1, velVar2))
+
+#load data frame
+trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') 
+
+#get velocity variable
+velVar = trackingDf['velVar'] #[:-1] #lopped off one data point because mwt is a diff transform
+
+#make scatterplot
+fig = plt.figure()
+
+vel_scatt = plt.scatter(*embedding_all.T, 
+           c=velVar, 
+           vmin = -0.3,
+           vmax = 1,
+           marker='o', s=0.5, alpha=0.2) 
+#plt.title('UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + expt_fn + ' color = velocity')
+#plt.title('UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + expt_fn + ' ' + expt_fn2 +' color = velocity')
+plt.title('UMAP all points 201115, body and jaw included.')
+plt.colorbar(vel_scatt)
+plt.xlabel('Dim 1')
+plt.ylabel('Dim 2')
+
+
+
+#%% plot umap points according to whisker contact time
+
+whiskCont = trackingDf['wiskContTimeBool'][:-1]
+
+#make scatterplot 
+fig = plt.figure()
+ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + expt_fn + ' blue=whiskContact, red=all other')
+
+ax.scatter(*embedding_all.T[:,[np.where(whiskCont==0)[0]]], c='r', marker='o', s=0.5, alpha=0.2) #obst1/3
+ax.scatter(*embedding_all.T[:,[np.where(whiskCont==1)[0]]], c='b', marker='o', s=0.5, alpha=0.2)
 
 ax.set_xlabel('Dim 1')
 ax.set_ylabel('Dim 2')
@@ -123,7 +220,7 @@ f = np.reshape(kde_kernel(positions).T, xx.shape)
 
 fig = plt.figure()
 plt.imshow(f)
-plt.title('umap gaussian kde BW=' + str(bw_val) + '. DS='+str(downsamp))
+plt.title('umap gaussian kde BW=' + str(bw_val) + '. DS='+str(downsamp) + ' ' + expt_fn)
 
 # visualize kde plot
 

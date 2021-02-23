@@ -53,7 +53,27 @@ np.savetxt(data_dir + expt_fn + '_mwtFreqs.csv', freqs, delimiter=",")
 np.savetxt(data_dir + expt_fn + '_mwtPower.csv', power, delimiter=",")
 np.savetxt(data_dir + expt_fn + '_mwtXNew.csv', X_new, delimiter=",")
 
-#in future iterations I should include one of the jawVars, whiskerAngle, and bodyAngles
+#%% MWT but with additional features jawVars, whiskerAngle, and bodyAngles
+from behavelet import wavelet_transform
+
+#format the data
+pawBodyJaw = np.concatenate((pawsRS, 
+                             trackingDf['bodyAngles'].to_numpy().reshape(403912,1), 
+                             trackingDf['jawVarX'].to_numpy().reshape(403912,1)), 
+                            axis=1)
+
+#perform MWT
+freqs, power, X_new = wavelet_transform(pawBodyJaw, 
+                                        n_freqs=25, 
+                                        fsample=250., 
+                                        fmin=1., 
+                                        fmax=50.)
+
+#save variables for use later
+np.savetxt(data_dir + expt_fn + '_jawBod_mwtFreqs.csv', freqs, delimiter=",")
+np.savetxt(data_dir + expt_fn + '_jawBod_mwtPower.csv', power, delimiter=",")
+np.savetxt(data_dir + expt_fn + '_jawBod_mwtXNew.csv', X_new, delimiter=",")
+
 
 #%%  plot the behavelet data
  
