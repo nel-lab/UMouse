@@ -50,8 +50,46 @@ XDSamp = X_new[::downsamp]
 np.savetxt(data_dir + expt_fn + '_XDSamp' + str(downsamp) + '_' + todaystr + '.csv', 
            XDSamp,
            delimiter=",")
-#np.savetxt("D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/XSDamp" + str(downsamp) + todaystr + '.csv', XDSamp, delimiter=",")
 
+#%% Importance Sampling - preferentially select frames around a given event (whisker contact)
+
+#set interval of interest (+30:330 ms just after each whisker contact)
+int_start = 30/1000
+int_end = 330/1000
+
+#set stratification ratio. proportion of frames from interval of interest vs the rest of the session 
+strat_rat = 10 
+downsamp = 20
+
+#load spectrographic data and behavior labels
+X_new = pd.read_csv(data_dir + expt_fn + '_mwtXNew.csv')
+X_new = X_new.to_numpy()
+trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') 
+
+#determine the frame rate
+frame_rate = np.round(1/np.mean(np.diff(trackingDf['timeStamps'][0:10000])))
+
+#format behavior labels by retrieving first whisk contact in a sequence
+wiskArray = np.array(trackingDf['wiskContTimeBool'])
+wiskArray = np.insert(np.diff(wiskArray), 0, 0, axis=0)
+wiskArray[wiskArray == -1] = 0
+
+#identify frames in interval of interest
+for thisWisk in np.where(wiskArray)[0]:
+    wiskArray[thisWisk] = 0
+    wiskArray[int(thisWisk+np.round((int_start/1)*frame_rate)) : int(thisWisk+np.round((int_end/1)*frame_rate))] =1
+
+#retrieve spectrographic data from each period
+wiskContXNew = X_new[np.where(wiskArray[:-1])[0],:]
+otherXNew = X_new[np.where(wiskArray[:-1]==0)[0],:]
+    
+#downsample from each category and combine
+#wiskContDSamp = wiskContXNew[::int(np.round(downsamp/strat_rat))]
+wiskContDSamp = wiskContXNew[::2]
+otherDSamp = otherXNew[::downsamp]
+
+#combine into one sample for fitting the umap embedding
+XDSamp = np.concatenate((wiskContDSamp, otherDSamp))
 
 #%% TWO MOUSE EMBEDDING
 #load spectrographic data for two mice and combine into one down sampled array
@@ -100,7 +138,8 @@ embedding = mapper.embedding_
 
 fig = plt.figure()
 umap.plot.points(mapper)
-plt.title('UMAP embedding: ' + expt_fn + 'DS=' + str(downsamp) + 'with jaw and body angles')
+plt.title('UMAP embedding: ' + expt_fn + ' DS=' + str(downsamp) + ' biased downsampling 30% post whiskCont')
+#plt.title('UMAP embedding: ' + expt_fn + ' DS=' + str(downsamp) + 'with jaw and body angles')
 
 #two mouse embedding
 #plt.title('UMAP embedding: ' + expt_fn1 + ' + ' + expt_fn2 + ' DS=' + str(downsamp))
@@ -127,12 +166,12 @@ ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) 
 
 # ax.scatter(*embedding_all.T, s=0.1, alpha=0.05)
 
-# ax.scatter(*embedding_all.T[:,[np.where(PC_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==0)[0]]], c='r', marker='o', s=0.2, alpha=0.01) #other
 
-ax.scatter(*embedding_all.T[:,[np.where(PC_labels==2)[0]]], c='g', marker='o', s=0.5, alpha=0.2) #obst1/3
-ax.scatter(*embedding_all.T[:,[np.where(PC_labels==3)[0]]], c='b', marker='o', s=0.5, alpha=0.2)
-ax.scatter(*embedding_all.T[:,[np.where(PC_labels==4)[0]]], c='k', marker='o', s=0.5, alpha=0.2)
-ax.scatter(*embedding_all.T[:,[np.where(PC_labels==1)[0]]], c='c', marker='o', s=0.5, alpha=0.2) #reward
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==2)[0]]], c='g', marker='o', s=0.2, alpha=0.2) #obst1/3
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==3)[0]]], c='b', marker='o', s=0.2, alpha=0.2)
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==4)[0]]], c='k', marker='o', s=0.2, alpha=0.2)
+ax.scatter(*embedding_all.T[:,[np.where(PC_labels==1)[0]]], c='c', marker='o', s=0.2, alpha=0.2) #reward
 
 ax.set_xlabel('Dim 1')
 ax.set_ylabel('Dim 2')

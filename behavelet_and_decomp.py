@@ -35,8 +35,8 @@ import cv2
 
 #%% access the data
 
-trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') #'D:/data/BehaviorData/RW_data/trackingDf.csv'
-pawsRS = genfromtxt(data_dir + expt_fn + '_pawsArray.csv', delimiter=',') #'D:/data/BehaviorData/RW_data/trackingArray.csv', delimiter=','
+trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') 
+pawsRS = genfromtxt(data_dir + expt_fn + '_pawsArray.csv', delimiter=',') 
 
 #%% Morlet wavelet analysis
 
@@ -54,6 +54,7 @@ np.savetxt(data_dir + expt_fn + '_mwtPower.csv', power, delimiter=",")
 np.savetxt(data_dir + expt_fn + '_mwtXNew.csv', X_new, delimiter=",")
 
 #%% MWT but with additional features jawVars, whiskerAngle, and bodyAngles
+
 from behavelet import wavelet_transform
 
 #format the data
@@ -74,40 +75,50 @@ np.savetxt(data_dir + expt_fn + '_jawBod_mwtFreqs.csv', freqs, delimiter=",")
 np.savetxt(data_dir + expt_fn + '_jawBod_mwtPower.csv', power, delimiter=",")
 np.savetxt(data_dir + expt_fn + '_jawBod_mwtXNew.csv', X_new, delimiter=",")
 
-
 #%%  plot the behavelet data
  
-plt.figure()
-plt.imshow(X_new[:50000,:].T, aspect='auto')
-#plt.imshow(X_new.values[:50000,:].T, aspect='auto')
-plt.title('Behavelet output ' + expt_fn)
+#plot spectropgrahic data with vertical lines indicating whisker contact and reward
+wiskArray = np.array(np.where(trackingDf['wiskContTimeBool'])[0])
+rewardArray = np.array(np.where(trackingDf['rewardBool'])[0])
+
+fig = plt.figure()
+ax1 = fig.add_axes([0,0,1,1])
+ax1.imshow(X_new[:50000,0:350].T, aspect='auto')
+#Whisker contact times (only plotting the first frame of contact sequence)
+for wiskInd,thisWisk in enumerate(wiskArray):
+    if wiskInd==0:
+        ax1.axvline(x=thisWisk, color = 'w', lw=0.5)
+    elif thisWisk > 50000:
+        break
+    elif thisWisk - wiskArray[wiskInd-1]>1:
+        ax1.axvline(x=thisWisk, color = 'w', lw=0.5)
+#Reward
+for rewInd,thisRew in enumerate(rewardArray):
+    if rewInd==0:
+        ax1.axvline(x=thisRew, color = 'b', lw=0.5)
+    elif thisRew > 50000:
+        break
+    elif thisRew - rewardArray[rewInd-1]>1:
+        ax1.axvline(x=thisRew, color = 'b', lw=0.5)
+     
+#for plotting without the indactor lines
+# plt.imshow(X_new[:50000,:].T, aspect='auto')
+# #plt.imshow(X_new.values[:50000,:].T, aspect='auto')
+# plt.axvline(x=np.where(trackingDf['wiskContTimeBool'][:50000]), color='w')
+
+plt.title('Behavelet output ' + expt_fn + ' white=whisker, blue=reward')
 plt.ylabel('Paws * dimensions')
 plt.xlabel('frame # at 250Hz')
+plt.savefig(data_dir + expt_fn + 'spectImg')
 
 #%% OPTIONAL - shortcut if you have already performed behavelet
-#freqs = pd.read_csv('D:/data/BehaviorData/RW_data/freqsArray.csv')
-#power = pd.read_csv('D:/data/BehaviorData/RW_data/powerArray.csv')
-#X_new = pd.read_csv('D:/data/BehaviorData/RW_data/X_newArray.csv')
 
-#%% compare decomposition methods
+#without jaw angle and body angle
+#X_new = pd.read_csv(data_dir + expt_fn + '_mwtXNew.csv')
+#with jaw angle and body angle
+#X_new = pd.read_csv(data_dir + expt_fn + '_jawBod_mwtXNew.csv')
 
-# comp = 2
-# p = PCA(n_components=comp)
-# n = NMF(n_components=comp, max_iter=500, alpha=2)
-# t = TSNE(n_components=comp-1)
-# k = KernelPCA(n_components=comp)
-# f = FastICA(n_components=comp, max_iter=1000)
-
-# downsample=50
-
-# pca  = p.fit_transform(X_new[::downsample])
-# nmf  = n.fit_transform(X_new[::downsample])
-# tsne = t.fit_transform(X_new[::downsample])
-# kpca = k.fit_transform(X_new[::downsample])
-# fica = f.fit_transform(X_new[::downsample])
-
-# #save frame IDs for each downsampled value
-# PCA_points_ix = np.array(list(range(0, len(X_new), downsample)))
+#X_new = X_new.to_numpy() #from pandas series
 
 #%% Separate obstacle times into early and late
 
@@ -163,6 +174,11 @@ np.savetxt(data_dir + expt_fn + "_bxLabelsArray.csv",
            PC_labels, 
            delimiter=",")
 
+#%% Mostly older code from here on out
+
+#%% 
+
+
 #%% PLOT 3D color coded PCs
 
 scores_plot = pca
@@ -179,45 +195,6 @@ ax.scatter(*scores_plot.T[:,[np.where(PC_labels==4)[1]]], c='k', marker='o', alp
 ax.set_xlabel('Dim 1')
 ax.set_ylabel('Dim 2')
 ax.set_zlabel('Dim 3')
-
-#%% Mostly older code from here on out
-
-#%% 
-
-
-#%% Run kmeans on the pca output
-
-clus = 6
-
-cluster = KMeans(n_clusters = clus)
-kmeans = cluster.fit(pca)  #labels_    cluster_centers_
-    
-fig_all = plt.figure()
-ax = plt.axes(projection='3d', title='kmeans clustering of pca data. clusters='+str(clus))
-
-y_kmeans = kmeans.predict(pca)
-plt.scatter(x=pca[:,0], y=pca[:,1], zs=pca[:,2], c=y_kmeans, s=50, alpha=0.05, cmap='viridis')
-ax.scatter(*kmeans.cluster_centers_.T, c='k', marker='x')
-
-#%% try a gaussian low pass filter on tsne output
-tsneRound = tsne.astype(int)
-tsneMin = np.min(tsneRound, axis=0)
-tsneMax = np.max(tsneRound, axis=0)
-
-tsneNonNeg = tsneRound
-tsneNonNeg[:,0] += abs(tsneMin[0])
-tsneNonNeg[:,1] += abs(tsneMin[1])
-
-tsneImg = np.zeros([160,160]) 
-for pixInd in range(0,len(tsneNonNeg)): 
-    tsneImg[tsneNonNeg[pixInd,0], tsneNonNeg[pixInd,1]] += 1
-
-tsneImgGauss = cv2.GaussianBlur(tsneImg, (51,51), 0)
-
-fig = plt.figure()
-plt.imshow( tsneImgGauss )
-plt.title('tsne outputs passed through gaussian filter (51,51)')
-plt.colorbar()
 
 #%% TSNE-2dim, Gaussian filter, and kmeans clustering
 
@@ -242,73 +219,5 @@ fig_all = plt.figure()
 ax = plt.axes(title='tsne, gaussian, kmeans clustering. clusters='+str(clus))
 plt.scatter(tsneGaussCoords[:,0], tsneGaussCoords[:,1], c=y_kmeans, s=50, alpha=0.4, cmap='viridis')
 ax.scatter(*tsneKmeans.cluster_centers_.T, c='k', marker='x')
-
-#%% TSNE 2dim and kmeans without filter
-
-#run kmeans
-clus=4
-tsneCluster = KMeans(n_clusters = clus)
-tsneKmeans = tsneCluster.fit(tsne)
-y_kmeans = tsneKmeans.labels_ #tsneKmeans.predict(tsne)
-
-#plot outputs colorcoded by cluster ID
-fig_all = plt.figure()
-ax = plt.axes(title='tsne/kmeans clustering. clusters='+str(clus))
-plt.scatter(tsne[:,0], tsne[:,1], c=y_kmeans, s=50, alpha=0.2, cmap='viridis')
-ax.scatter(*tsneKmeans.cluster_centers_.T, c='k', marker='x')
-
-#%% kclosest points to centroids function
-
-def kclosest(k, dim, cluster_centroids):
-    dist = []
-
-    for row in dim:
-        axis_diff = row-cluster_centroids 
-        dist.append(np.linalg.norm(axis_diff, axis=1))
-   
-    dist = np.array(dist)
-    closest = np.argsort(dist, axis=0)
-    ids = closest[:k]
-        
-    return dist, closest, ids
-
-#%% kclosest points
-k = 5
-
-kmeans_dist, kmeans_closest, kmeans_ids = kclosest(k, pca, kmeans.cluster_centers_)
-
-#%% plot traces around kclosest points - paw center 'Z'
-spread=200   # plot k closest frames (+- spread)
-paw_axis = 'Y'
-paws = [col for col in trackingDf.columns if col[-1] == paw_axis]
-
-num_clus = kmeans_ids.shape[1] 
-
-fig, ax = plt.subplots(nrows=num_clus, ncols=kmeans_ids.shape[0])   
-fig.suptitle('pca,'+ ' kmeans, ' + 'paw_axis='+paw_axis, size='x-large') 
-
-for clus in range(num_clus):           
-     for num, i in enumerate(kmeans_ids[:,clus]): 
-                              
-         ax[clus,num].plot(trackingDf.loc[downsample*i-spread:downsample*i+spread+1,paws])  
-         
-         if num==0:                   
-             ax[clus,num].set_ylabel('cluster '+str(clus+1), size='large')  
-         if clus==0:
-             ax[clus,num].set_title('closest: '+str(num+1))
-          
-DPI = fig.get_dpi()
-fig.set_size_inches(1920.0/float(DPI),1080.0/float(DPI))
-
-fig.tight_layout(rect=[0, 0.05, 1, 0.95]) 
-
-# fig.savefig('/Users/jimmytabet/Desktop/Behavioral Classification Results/Std. Before/traces/'+dic['name']+'/'+c_type, dpi=DPI, bbox_inches='tight')
-#plt.close('all')
-
-
-
-
-
-
 
 

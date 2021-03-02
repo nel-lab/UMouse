@@ -8,12 +8,18 @@ Clean the data. Convert to dataframe and save file.
 @author: Jake Heffley
 """
 
+#make a list of datasets
+data_fn_list  = list(['trackingData_181215_003'], ['trackingData_201115_000'], 
+                     ['201217_000'], ['201218_000'], ['201226_000'], ['201227_000'], 
+                     ['201228_000'], ['201229_000'], ['201230_000'])
+
 #select the dataset to analyze
 #data_fn = 'trackingData_201115_000'
 data_fn = 'trackingData_181215_003'
 expt_fn = data_fn[-10:]
 
-#import dependencies
+
+#%% import dependencies
 import pandas as pd
 import numpy as np
 from scipy.io import loadmat
