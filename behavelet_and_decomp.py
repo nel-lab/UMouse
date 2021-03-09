@@ -14,15 +14,19 @@ so that it works with Richard's data.
 @author: Jake
 """
 
+#make a list of datasets
+data_fn_list  = list(['181215_003', '201115_000', 
+                     '201217_000', '201218_000', '201226_000', '201227_000', 
+                     '201228_000', '201229_000', '201230_000'])
+
 #select the dataset to analyze
-data_fn = 'trackingData_201115_000'
-#data_fn = 'trackingData_181215_003'
-expt_fn = data_fn[-10:]
+data_fn = data_fn_list[8]
+print(data_fn)
 
 #set path
 data_dir = 'D:/data/BehaviorData/RW_data/' + data_fn + '/'
 
-#import dependencies
+#%% import dependencies
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -35,45 +39,35 @@ import cv2
 
 #%% access the data
 
-trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') 
-pawsRS = genfromtxt(data_dir + expt_fn + '_pawsArray.csv', delimiter=',') 
+trackingDf = pd.read_csv(data_dir + data_fn + '_Df.csv') 
+pawsRS = genfromtxt(data_dir + data_fn + '_pawsArray.csv', delimiter=',') 
 
 #%% Morlet wavelet analysis
 
+frame_rate = np.round(1/np.mean(np.diff(trackingDf['timeStamps'][0:3000])))
+n_freqs = 25  #np.round(frame_rate/10)
+mwt_input = np.concatenate((pawsRS, 
+                          trackingDf['bodyAngles'].to_numpy().reshape(len(pawsRS),1), 
+                          trackingDf['jawVarX'].to_numpy().reshape(len(pawsRS),1)), 
+                        axis=1)
+
 #load module and perform transformation
 from behavelet import wavelet_transform
-freqs, power, X_new = wavelet_transform(pawsRS, 
-                                        n_freqs=25, 
-                                        fsample=250., 
+print('starting Morlet Wavelet Transform')
+freqs, power, X_new = wavelet_transform(mwt_input, 
+                                        n_freqs=n_freqs, 
+                                        fsample=frame_rate, 
                                         fmin=1., 
                                         fmax=50.)
 
 #save variables for use later
-np.savetxt(data_dir + expt_fn + '_mwtFreqs.csv', freqs, delimiter=",")
-np.savetxt(data_dir + expt_fn + '_mwtPower.csv', power, delimiter=",")
-np.savetxt(data_dir + expt_fn + '_mwtXNew.csv', X_new, delimiter=",")
+print('Morlet Wavelet Transform complete. Saving variables.')
+np.savetxt(data_dir + data_fn + '_mwtFreqs.csv', freqs, delimiter=",")
+np.savetxt(data_dir + data_fn + '_mwtPower.csv', power, delimiter=",")
+np.savetxt(data_dir + data_fn + '_mwtXNew.csv', X_new[0:(n_freqs*pawsRS.shape[1]-1),:], delimiter=",")
 
-#%% MWT but with additional features jawVars, whiskerAngle, and bodyAngles
-
-from behavelet import wavelet_transform
-
-#format the data
-pawBodyJaw = np.concatenate((pawsRS, 
-                             trackingDf['bodyAngles'].to_numpy().reshape(403912,1), 
-                             trackingDf['jawVarX'].to_numpy().reshape(403912,1)), 
-                            axis=1)
-
-#perform MWT
-freqs, power, X_new = wavelet_transform(pawBodyJaw, 
-                                        n_freqs=25, 
-                                        fsample=250., 
-                                        fmin=1., 
-                                        fmax=50.)
-
-#save variables for use later
-np.savetxt(data_dir + expt_fn + '_jawBod_mwtFreqs.csv', freqs, delimiter=",")
-np.savetxt(data_dir + expt_fn + '_jawBod_mwtPower.csv', power, delimiter=",")
-np.savetxt(data_dir + expt_fn + '_jawBod_mwtXNew.csv', X_new, delimiter=",")
+#save variables with jaw angles and body angles for use later
+np.savetxt(data_dir + data_fn + '_jawBod_mwtXNew.csv', X_new, delimiter=",")
 
 #%%  plot the behavelet data
  
@@ -106,17 +100,17 @@ for rewInd,thisRew in enumerate(rewardArray):
 # #plt.imshow(X_new.values[:50000,:].T, aspect='auto')
 # plt.axvline(x=np.where(trackingDf['wiskContTimeBool'][:50000]), color='w')
 
-plt.title('Behavelet output ' + expt_fn + ' white=whisker, blue=reward')
+plt.title('Behavelet output ' + data_fn + ' white=whisker, blue=reward')
 plt.ylabel('Paws * dimensions')
 plt.xlabel('frame # at 250Hz')
-plt.savefig(data_dir + expt_fn + 'spectImg')
+plt.savefig(data_dir + data_fn + 'spectImg')
 
 #%% OPTIONAL - shortcut if you have already performed behavelet
 
 #without jaw angle and body angle
-#X_new = pd.read_csv(data_dir + expt_fn + '_mwtXNew.csv')
+#X_new = pd.read_csv(data_dir + data_fn + '_mwtXNew.csv')
 #with jaw angle and body angle
-#X_new = pd.read_csv(data_dir + expt_fn + '_jawBod_mwtXNew.csv')
+#X_new = pd.read_csv(data_dir + data_fn + '_jawBod_mwtXNew.csv')
 
 #X_new = X_new.to_numpy() #from pandas series
 
@@ -170,54 +164,51 @@ PC_labels[0, [np.where(obstEarly.T ==1)]] = 2
 PC_labels[0, [np.where(obstMid.T ==1)]] = 3
 PC_labels[0, [np.where(obstLate.T ==1)]] = 4
 
-np.savetxt(data_dir + expt_fn + "_bxLabelsArray.csv", 
+np.savetxt(data_dir + data_fn + "_bxLabelsArray.csv", 
            PC_labels, 
            delimiter=",")
 
 #%% Mostly older code from here on out
 
-#%% 
-
-
 #%% PLOT 3D color coded PCs
 
-scores_plot = pca
+# scores_plot = pca
 
-fig = plt.figure()
-ax = plt.axes(projection='3d', title='pca First 3 PCs for behavelet locomotion data.')
+# fig = plt.figure()
+# ax = plt.axes(projection='3d', title='pca First 3 PCs for behavelet locomotion data.')
 
-#ax.scatter(*scores_plot.T[:,[np.where(PC_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
-ax.scatter(*scores_plot.T[:,[np.where(PC_labels==1)[1]]], c='c', marker='o', alpha=0.2) #reward
-ax.scatter(*scores_plot.T[:,[np.where(PC_labels==2)[1]]], c='g', marker='o', alpha=0.2) #obst1/3
-#ax.scatter(*scores_plot.T[:,[np.where(PC_labels==3)[1]]], c='b', marker='o', alpha=0.2)
-ax.scatter(*scores_plot.T[:,[np.where(PC_labels==4)[1]]], c='k', marker='o', alpha=0.2)
+# #ax.scatter(*scores_plot.T[:,[np.where(PC_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
+# ax.scatter(*scores_plot.T[:,[np.where(PC_labels==1)[1]]], c='c', marker='o', alpha=0.2) #reward
+# ax.scatter(*scores_plot.T[:,[np.where(PC_labels==2)[1]]], c='g', marker='o', alpha=0.2) #obst1/3
+# #ax.scatter(*scores_plot.T[:,[np.where(PC_labels==3)[1]]], c='b', marker='o', alpha=0.2)
+# ax.scatter(*scores_plot.T[:,[np.where(PC_labels==4)[1]]], c='k', marker='o', alpha=0.2)
 
-ax.set_xlabel('Dim 1')
-ax.set_ylabel('Dim 2')
-ax.set_zlabel('Dim 3')
+# ax.set_xlabel('Dim 1')
+# ax.set_ylabel('Dim 2')
+# ax.set_zlabel('Dim 3')
 
 #%% TSNE-2dim, Gaussian filter, and kmeans clustering
 
-#treat the heatmap like a 3d image, sort of like a mountain plot. 
-tsneGaussCoords = []
-for Xpix in range(tsneImgGauss.shape[0]):
-    for Ypix in range(tsneImgGauss.shape[1]):
-        if tsneImgGauss[Xpix,Ypix] > 0:
-            tsneGaussCoords.append([Xpix, Ypix, tsneImgGauss[Xpix,Ypix]])
-tsneGaussCoords = np.array(tsneGaussCoords)
-tsneGaussCoordsNorm = tsneGaussCoords
-tsneGaussCoordsNorm[:,2] *= 100
+# #treat the heatmap like a 3d image, sort of like a mountain plot. 
+# tsneGaussCoords = []
+# for Xpix in range(tsneImgGauss.shape[0]):
+#     for Ypix in range(tsneImgGauss.shape[1]):
+#         if tsneImgGauss[Xpix,Ypix] > 0:
+#             tsneGaussCoords.append([Xpix, Ypix, tsneImgGauss[Xpix,Ypix]])
+# tsneGaussCoords = np.array(tsneGaussCoords)
+# tsneGaussCoordsNorm = tsneGaussCoords
+# tsneGaussCoordsNorm[:,2] *= 100
 
-#run kmeans clustering and get labels 
-clus=9
-tsneCluster = KMeans(n_clusters = clus)
-tsneKmeans = tsneCluster.fit(tsneGaussCoords)
-y_kmeans = tsneKmeans.labels_ #tsneKmeans.predict(tsneGaussCoords)
+# #run kmeans clustering and get labels 
+# clus=9
+# tsneCluster = KMeans(n_clusters = clus)
+# tsneKmeans = tsneCluster.fit(tsneGaussCoords)
+# y_kmeans = tsneKmeans.labels_ #tsneKmeans.predict(tsneGaussCoords)
 
-#plot as a scatterplot 
-fig_all = plt.figure()
-ax = plt.axes(title='tsne, gaussian, kmeans clustering. clusters='+str(clus))
-plt.scatter(tsneGaussCoords[:,0], tsneGaussCoords[:,1], c=y_kmeans, s=50, alpha=0.4, cmap='viridis')
-ax.scatter(*tsneKmeans.cluster_centers_.T, c='k', marker='x')
+# #plot as a scatterplot 
+# fig_all = plt.figure()
+# ax = plt.axes(title='tsne, gaussian, kmeans clustering. clusters='+str(clus))
+# plt.scatter(tsneGaussCoords[:,0], tsneGaussCoords[:,1], c=y_kmeans, s=50, alpha=0.4, cmap='viridis')
+# ax.scatter(*tsneKmeans.cluster_centers_.T, c='k', marker='x')
 
 

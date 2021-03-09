@@ -9,15 +9,16 @@ Clean the data. Convert to dataframe and save file.
 """
 
 #make a list of datasets
-data_fn_list  = list(['trackingData_181215_003'], ['trackingData_201115_000'], 
-                     ['201217_000'], ['201218_000'], ['201226_000'], ['201227_000'], 
-                     ['201228_000'], ['201229_000'], ['201230_000'])
+data_fn_list  = list(['181215_003', '201115_000', 
+                     '201217_000', '201218_000', '201226_000', '201227_000', 
+                     '201228_000', '201229_000', '201230_000'])
 
 #select the dataset to analyze
-#data_fn = 'trackingData_201115_000'
-data_fn = 'trackingData_181215_003'
-expt_fn = data_fn[-10:]
+data_fn = data_fn_list[8]
+print(data_fn)
 
+#set path
+data_dir = 'D:/data/BehaviorData/RW_data/' + data_fn + '/'
 
 #%% import dependencies
 import pandas as pd
@@ -27,11 +28,11 @@ from scipy.io import loadmat
 #%%  unpack dctionary
 
 # open the data. In dictionary format. 
-mat_data = loadmat('D:/data/BehaviorData/RW_data/' + data_fn + '/' + data_fn + '.mat')
+mat_data = loadmat(data_dir + 'trackingData_' + data_fn + '.mat')
 
 # keys: obstacleTimes, paws, paws_pixels, rewardTimes, t,  etc
 # Values are numpy arrays
-list(mat_data.keys())
+print(list(mat_data.keys()))
 
 #check the shape of all the variabels  #shape for 201115 = (403912, 4, 3)
 # np.shape(mat_data['t']) # = (317617, 1) # t converted to tVar. Frame timestamps in seconds.
@@ -76,6 +77,15 @@ if '181215_003' in data_fn:
     bodyAngles = bodyAngles[f_cut:]
     whiskerAngle = whiskerAngle[f_cut:]
     jawVar = jawVar[f_cut:]
+if data_fn == '201228_000':
+    f_cut = 442255
+    paws = paws[0:f_cut]
+    pawsPixels = pawsPixels[0:f_cut]
+    tVar = tVar[0:f_cut]
+    velVar = velVar[0:f_cut]
+    bodyAngles = bodyAngles[0:f_cut]
+    whiskerAngle = whiskerAngle[0:f_cut]
+    jawVar = jawVar[0:f_cut]
 
 #Look for nan values in the tracking data
 good_frames = np.sum(np.sum(paws, axis=2), axis=1)
@@ -90,12 +100,15 @@ assert np.sum(np.isnan(np.sum(obstTimes, axis=1))) == 0
 #Deal with nans in jaw and wiskContactTimes variables
 if 'wiskContactTimes' in list(mat_data.keys()):
     if np.sum(np.isnan(wiskContactTimes)) != 0:
+        print('warning: ' + str(np.sum(np.isnan(wiskContactTimes))) + ' missing values found and removed for wiskContactTimes. '+ data_fn)
         wiskContactTimes = wiskContactTimes[~np.isnan(wiskContactTimes)]
 if 'lickTimes' in list(mat_data.keys()):
     if np.sum(np.isnan(lickTimes)) != 0:
+        print('warning: ' + str(np.sum(np.isnan(lickTimes))) + ' missing values found and removed for lickTimes. '+ data_fn)
         lickTimes = lickTimes[~np.isnan(lickTimes)]
 if np.sum(np.isnan(rewardTimes)) != 0:
-    lickTimes = lickTimes[~np.isnan(rewardTimes)]
+    print('warning: ' + str(np.sum(np.isnan(rewardTimes))) + ' missing values found and removed for rewardTimes. '+ data_fn)
+    rewardTimes = rewardTimes[~np.isnan(rewardTimes)]
     
 #trim lickTimes so it only includes values with associated DLC coordinates (paws)
 if 'lickTimes' in list(mat_data.keys()):
@@ -113,10 +126,10 @@ assert np.round(frame_rate) == 250
 
 #%% create boolean versions of rewardTimes, obstTimes, lickTimes, and wiskContactTimes
 
-#Create boolean with 1s for the timepoints in a 0.5s window after reward
+#Create boolean with 1s for the timepoints in a 1.0s window after reward
 rewTimeBool = np.zeros(len(paws))
 for thisRew in range(0, len(rewardTimes)): 
-    postRewIx = np.argwhere((tVar > rewardTimes[thisRew]) & (tVar < rewardTimes[thisRew]+0.5)) 
+    postRewIx = np.argwhere((tVar > rewardTimes[thisRew]) & (tVar < rewardTimes[thisRew]+1.0)) 
     rewTimeBool[postRewIx[:,0]] = 1  
 
 #Create a boolean dataframe column with 1s during the obstacle
@@ -164,9 +177,9 @@ if 'wiskContactTimes' in list(mat_data.keys()):
     trackingDf['wiskContTimeBool'] = wiskContTimeBool
 
 #%% Save dataframe and the array 
-trackingDf.to_csv(path_or_buf = 'D:/data/BehaviorData/RW_data/' + data_fn + '/' + expt_fn + '_Df.csv', 
+trackingDf.to_csv(path_or_buf = data_dir + data_fn + '_Df.csv', 
                   index=False)
-np.savetxt('D:/data/BehaviorData/RW_data/' + data_fn + '/' + expt_fn + '_pawsArray.csv', 
+np.savetxt(data_dir + data_fn + '_pawsArray.csv', 
            pawsRS, 
            delimiter=",")
 
