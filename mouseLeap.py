@@ -9,17 +9,19 @@ to run after behavelet_and_decomp.py
  
 @author: Jake
 """
-#%% get started
+#make a list of datasets
+data_fn_list  = list(['181215_003', '201115_000', 
+                     '201217_000', '201218_000', '201226_000', '201227_000', 
+                     '201228_000', '201229_000', '201230_000'])
 
 #select the dataset to analyze
-data_fn = 'trackingData_201115_000'
-#data_fn = 'trackingData_181215_003'
-expt_fn = data_fn[-10:]
+data_fn = data_fn_list[2]
+print(data_fn)
 
 #set path
 data_dir = 'D:/data/BehaviorData/RW_data/' + data_fn + '/'
 
-#load dependencies
+#%% load dependencies
 import pandas as pd
 import numpy as np
 from numpy import genfromtxt
@@ -33,63 +35,63 @@ import umap
 import umap.plot
 from scipy.stats import gaussian_kde
 import cv2
-from datetime import date
 import joblib
 
+from datetime import date
 today = date.today()
 todaystr = today.strftime("%y") + today.strftime("%m") + today.strftime("%d")
 
 #%% load spectrographic data and downsample by XX
 
-X_new = pd.read_csv(data_dir + expt_fn + '_mwtXNew.csv')
+X_new = pd.read_csv(data_dir + data_fn + '_mwtXNew.csv')
 X_new = X_new.to_numpy()
 
 downsamp = 20
 XDSamp = X_new[::downsamp]
 
-np.savetxt(data_dir + expt_fn + '_XDSamp' + str(downsamp) + '_' + todaystr + '.csv', 
+np.savetxt(data_dir + '_XDSamp' + str(downsamp) + '_' + todaystr + '.csv', 
            XDSamp,
            delimiter=",")
 
 #%% Importance Sampling - preferentially select frames around a given event (whisker contact)
 
-#set interval of interest (+30:330 ms just after each whisker contact)
-int_start = 30/1000
-int_end = 330/1000
+# #set interval of interest (+30:330 ms just after each whisker contact)
+# int_start = 30/1000
+# int_end = 330/1000
 
-#set stratification ratio. proportion of frames from interval of interest vs the rest of the session 
-strat_rat = 10 
-downsamp = 20
+# #set stratification ratio. proportion of frames from interval of interest vs the rest of the session 
+# strat_rat = 10 
+# downsamp = 20
 
-#load spectrographic data and behavior labels
-X_new = pd.read_csv(data_dir + expt_fn + '_mwtXNew.csv')
-X_new = X_new.to_numpy()
-trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') 
+# #load spectrographic data and behavior labels
+# X_new = pd.read_csv(data_dir + '_mwtXNew.csv')
+# X_new = X_new.to_numpy()
+# trackingDf = pd.read_csv(data_dir + '_Df.csv') 
 
-#determine the frame rate
-frame_rate = np.round(1/np.mean(np.diff(trackingDf['timeStamps'][0:10000])))
+# #determine the frame rate
+# frame_rate = np.round(1/np.mean(np.diff(trackingDf['timeStamps'][0:10000])))
 
-#format behavior labels by retrieving first whisk contact in a sequence
-wiskArray = np.array(trackingDf['wiskContTimeBool'])
-wiskArray = np.insert(np.diff(wiskArray), 0, 0, axis=0)
-wiskArray[wiskArray == -1] = 0
+# #format behavior labels by retrieving first whisk contact in a sequence
+# wiskArray = np.array(trackingDf['wiskContTimeBool'])
+# wiskArray = np.insert(np.diff(wiskArray), 0, 0, axis=0)
+# wiskArray[wiskArray == -1] = 0
 
-#identify frames in interval of interest
-for thisWisk in np.where(wiskArray)[0]:
-    wiskArray[thisWisk] = 0
-    wiskArray[int(thisWisk+np.round((int_start/1)*frame_rate)) : int(thisWisk+np.round((int_end/1)*frame_rate))] =1
+# #identify frames in interval of interest
+# for thisWisk in np.where(wiskArray)[0]:
+#     wiskArray[thisWisk] = 0
+#     wiskArray[int(thisWisk+np.round((int_start/1)*frame_rate)) : int(thisWisk+np.round((int_end/1)*frame_rate))] =1
 
-#retrieve spectrographic data from each period
-wiskContXNew = X_new[np.where(wiskArray[:-1])[0],:]
-otherXNew = X_new[np.where(wiskArray[:-1]==0)[0],:]
+# #retrieve spectrographic data from each period
+# wiskContXNew = X_new[np.where(wiskArray[:-1])[0],:]
+# otherXNew = X_new[np.where(wiskArray[:-1]==0)[0],:]
     
-#downsample from each category and combine
-#wiskContDSamp = wiskContXNew[::int(np.round(downsamp/strat_rat))]
-wiskContDSamp = wiskContXNew[::2]
-otherDSamp = otherXNew[::downsamp]
+# #downsample from each category and combine
+# #wiskContDSamp = wiskContXNew[::int(np.round(downsamp/strat_rat))]
+# wiskContDSamp = wiskContXNew[::2]
+# otherDSamp = otherXNew[::downsamp]
 
-#combine into one sample for fitting the umap embedding
-XDSamp = np.concatenate((wiskContDSamp, otherDSamp))
+# #combine into one sample for fitting the umap embedding
+# XDSamp = np.concatenate((wiskContDSamp, otherDSamp))
 
 #%% TWO MOUSE EMBEDDING
 #load spectrographic data for two mice and combine into one down sampled array
@@ -124,6 +126,110 @@ reducer = umap.UMAP(n_neighbors=25, min_dist=0.05)
 mapper = reducer.fit(XDSampBoth)
 embedding = mapper.embedding_
 
+#%% a function which maps all data points 
+def plotEmbeddedByBx(bx_labels, embedding_all, this_session, labels_included):
+    
+    # 0=other, 1=reward+500ms, 2=obst1/3,   3=obstMid,   4=obstEnd
+    fig = plt.figure()
+    ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + this_session + ' cyan=reward, gbk=obstacle')
+    
+    bx_labels = bx_labels[0:-1] #trim because bx_labels has n-1 frames
+    
+    #plot data points
+    if 'other' in labels_included:
+        ax.scatter(*embedding_all.T[:,[np.where(bx_labels==0)[0]]], c='r', marker='o', s=0.2, alpha=0.01) #other
+        
+    if 'obst' in labels_included:
+        ax.scatter(*embedding_all.T[:,[np.where(bx_labels==2)[0]]], c='g', marker='o', s=0.2, alpha=0.2) #obst1/3
+        ax.scatter(*embedding_all.T[:,[np.where(bx_labels==3)[0]]], c='b', marker='o', s=0.2, alpha=0.2)
+        ax.scatter(*embedding_all.T[:,[np.where(bx_labels==4)[0]]], c='k', marker='o', s=0.2, alpha=0.2)
+    
+    if 'reward' in labels_included:
+        ax.scatter(*embedding_all.T[:,[np.where(bx_labels==1)[0]]], c='c', marker='o', s=0.2, alpha=0.2) #reward
+    
+    ax.set_xlabel('Dim 1')
+    ax.set_ylabel('Dim 2')
+    
+#%% MANY MOUSE  umap embedding
+
+#make a list of datasets
+data_fn_list  = list(['201115_000', 
+                     '201217_000', '201218_000', '201226_000', '201227_000', 
+                     '201228_000', '201229_000', '201230_000'])
+
+#determine # of sessions to be divided up
+n_sess = len(data_fn_list)
+tot_embed_fr = 25000
+fr_per_sess = int(np.round(25000/n_sess))
+
+#collect a sample of frames from each session
+for this_sess in data_fn_list:
+    print(this_sess)
+    
+    #load spectrographic data
+    this_data_dir = 'D:/data/BehaviorData/RW_data/' + this_sess + '/' +this_sess + '_jawBod_mwtXNew.csv'
+    this_spect = pd.read_csv(this_data_dir)
+    this_spect = this_spect.to_numpy()
+
+    #select the frames to sample
+    n_frames = len(this_spect)
+    samp_frames = np.round(np.linspace(0, n_frames, num=fr_per_sess, endpoint=False))
+    samp_frames = list(samp_frames.astype(int))
+        
+    #collect sample frames 
+    if this_sess == data_fn_list[0]:
+        multi_samp = this_spect[samp_frames,:]
+    else:
+        multi_samp = np.concatenate((multi_samp, this_spect[samp_frames,:]))
+        
+    del this_spect
+       
+#perform umap embedding
+reducer = umap.UMAP(n_neighbors=25, min_dist=0.05)
+mapper = reducer.fit(multi_samp)
+embedding = mapper.embedding_
+
+#save the model so you can load it later
+mapper_fn = "D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/" + 'umap_multiMouse_model_' + todaystr 
+joblib.dump(mapper, mapper_fn)
+
+#load the model
+# mapper = joblib.load(mapper_fn)
+
+#plot
+plt.title('UMAP embedding: 8 mouse embedding, n=25k')
+
+#%% collect a sample of frames from each session
+
+save_dir = 'D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/'    
+print('make embeddings for all mice using the multimouse model')
+
+for this_sess in data_fn_list:
+    print(this_sess)
+    
+    this_data_dir = 'D:/data/BehaviorData/RW_data/' + this_sess + '/' + this_sess
+    
+    #load spectrographic data
+    this_spect = pd.read_csv(this_data_dir + '_jawBod_mwtXNew.csv')
+    this_spect = this_spect.to_numpy()
+    
+    #transform the data and save a copy
+    this_embed = mapper.transform(this_spect)
+    np.savetxt(save_dir + this_sess + 'multiMouseEmbed_' + todaystr + '.csv', 
+           this_embed,
+           delimiter=",")
+    
+    #plot this mouse's embedding of all data points
+    bx_labels = genfromtxt(this_data_dir + '_bxLabelsArray.csv', 
+                           delimiter=',')
+    plotEmbeddedByBx(bx_labels, this_embed, this_sess, 
+                     ['reward', 'obst', 'other'])
+    
+    #save figure
+    fig.savefig(this_data_dir + '_multiMouse_embedAllPoints')
+    
+    #clear memory 
+    del this_spect, bx_labels
 
 #%% SINGLE MOUSE - perform UMAP on downsampled data
 
@@ -138,8 +244,8 @@ embedding = mapper.embedding_
 
 fig = plt.figure()
 umap.plot.points(mapper)
-plt.title('UMAP embedding: ' + expt_fn + ' DS=' + str(downsamp) + ' biased downsampling 30% post whiskCont')
-#plt.title('UMAP embedding: ' + expt_fn + ' DS=' + str(downsamp) + 'with jaw and body angles')
+plt.title('UMAP embedding: ' + data_fn + ' DS=' + str(downsamp) + ' biased downsampling 30% post whiskCont')
+#plt.title('UMAP embedding: ' + data_fn + ' DS=' + str(downsamp) + 'with jaw and body angles')
 
 #two mouse embedding
 #plt.title('UMAP embedding: ' + expt_fn1 + ' + ' + expt_fn2 + ' DS=' + str(downsamp))
@@ -157,12 +263,12 @@ embedding_all = reducer.transform(X_new)
 #%% Map all embedded points as 2D scatter plot
  
 #load labels 
-PC_labels = genfromtxt(data_dir + expt_fn + '_bxLabelsArray.csv', delimiter=',') #'D:/data/BehaviorData/RW_data/trackingArray.csv', delimiter=','
+PC_labels = genfromtxt(data_dir + '_bxLabelsArray.csv', delimiter=',') #'D:/data/BehaviorData/RW_data/trackingArray.csv', delimiter=','
 PC_labels = PC_labels[:-1]
 
 # 0=other, 1=reward+500ms, 2=obst1/3,   3=obstMid,   4=obstEnd
 fig = plt.figure()
-ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + expt_fn + ' cyan=reward, black=late obstacle')
+ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + data_fn + ' cyan=reward, black=late obstacle')
 
 # ax.scatter(*embedding_all.T, s=0.1, alpha=0.05)
 
@@ -176,13 +282,12 @@ ax.scatter(*embedding_all.T[:,[np.where(PC_labels==1)[0]]], c='c', marker='o', s
 ax.set_xlabel('Dim 1')
 ax.set_ylabel('Dim 2')
 
-
 #%% Plot umap points according to velocity
 
 #two mouse embedding
 
 # #load data and combine booleans
-# trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') 
+# trackingDf = pd.read_csv(data_dir + '_Df.csv') 
 # velVar1 = trackingDf['velVar'][:-1] 
 # data_dir2 = 'D:/data/BehaviorData/RW_data/trackingData_181215_003/'
 # trackingDf = pd.read_csv(data_dir2 + expt_fn2 + '_Df.csv')
@@ -190,7 +295,7 @@ ax.set_ylabel('Dim 2')
 # velVar = np.concatenate((velVar1, velVar2))
 
 #load data frame
-trackingDf = pd.read_csv(data_dir + expt_fn + '_Df.csv') 
+trackingDf = pd.read_csv(data_dir + '_Df.csv') 
 
 #get velocity variable
 velVar = trackingDf['velVar'] #[:-1] #lopped off one data point because mwt is a diff transform
@@ -203,8 +308,8 @@ vel_scatt = plt.scatter(*embedding_all.T,
            vmin = -0.3,
            vmax = 1,
            marker='o', s=0.5, alpha=0.2) 
-#plt.title('UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + expt_fn + ' color = velocity')
-#plt.title('UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + expt_fn + ' ' + expt_fn2 +' color = velocity')
+#plt.title('UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + data_fn + ' color = velocity')
+#plt.title('UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + data_fn + ' ' + expt_fn2 +' color = velocity')
 plt.title('UMAP all points 201115, body and jaw included.')
 plt.colorbar(vel_scatt)
 plt.xlabel('Dim 1')
@@ -218,7 +323,7 @@ whiskCont = trackingDf['wiskContTimeBool'][:-1]
 
 #make scatterplot 
 fig = plt.figure()
-ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + expt_fn + ' blue=whiskContact, red=all other')
+ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + data_fn + ' blue=whiskContact, red=all other')
 
 ax.scatter(*embedding_all.T[:,[np.where(whiskCont==0)[0]]], c='r', marker='o', s=0.5, alpha=0.2) #obst1/3
 ax.scatter(*embedding_all.T[:,[np.where(whiskCont==1)[0]]], c='b', marker='o', s=0.5, alpha=0.2)
@@ -259,7 +364,7 @@ f = np.reshape(kde_kernel(positions).T, xx.shape)
 
 fig = plt.figure()
 plt.imshow(f)
-plt.title('umap gaussian kde BW=' + str(bw_val) + '. DS='+str(downsamp) + ' ' + expt_fn)
+plt.title('umap gaussian kde BW=' + str(bw_val) + '. DS='+str(downsamp) + ' ' + datas_fn)
 
 # visualize kde plot
 
@@ -547,90 +652,7 @@ add_subplot_zoom(fig)
 
 #fig.savefig()
 
-#%% Plot videos from each cluster in order to label them
-#%% implement behavior montage
-from use_cases.behavior_montage import behavior_montage
-
-raw_video = 'D:/data/BehaviorData/RW_data/181215_003 .mp4'
-
-# if hasattr(behavior_montage, 'mov'): del behavior_montage.mov
-
-mont = behavior_montage(raw_video, downsample*pca['kmeans_ids'], shrink_factor=3, spread=spread)
-mont.fr = 70
-
-#%%
-mont.save('/Users/jimmytabet/Desktop/pca_kmeans.avi')
-
-#%% Generate a labelled behavior map in 2D 
 
 
 
 
-
-#%% End of currently used code. Below is snippets previously used or unused.
-#%%   incomplete code I made to plot the mean spectrogram of each cluster after the kmeans
-
-# plot average spectrogram from each cluster
-#
-#fig, axes = plt.subplots(ncols=4, nrows=math.ceil(clus/4), figsize=(9, 3), sharex=True, sharey=True)
-#ax = axes.ravel()
-#
-#for thisAx in np.unique(y_kmeans):
-#    thisClus = XDSamp[y_kmeans == thisAx]
-#    ax[thisAx].imshow()
-#
-#ax[0].imshow(fgray, cmap=plt.cm.gray)
-#ax[0].set_title('Input image')
-#ax[1].imshow(-dist_transform, cmap=plt.cm.gray)
-#ax[1].set_title('Distance transform')
-#ax[2].imshow(segmented, cmap=plt.cm.nipy_spectral)
-#ax[2].set_title('Separated objects')
-#
-#for a in ax:
-#    a.set_axis_off()
-#
-#fig.tight_layout()
-#plt.show()
-
-#%% Perform clustering on spectrographic sample
-
-# #kmeans clustering
-# clus=10  #arbitrarily picking 15 clusters
-# Cluster = KMeans(n_clusters = clus)
-# kmeans = Cluster.fit(XDSamp)
-# y_kmeans = kmeans.labels_ #tsneKmeans.predict(tsne)
-
-# #Test alternate clustering methods
-# #y_dbscan = DBSCAN(eps=2, min_samples=5).fit(XDSamp)
-# #y_gm = GaussianMixture(n_components=2, random_state=0).fit(XDSamp)
-
-# #identfy the number of data points in each cluster
-# fig = plt.figure() 
-# plt.hist(y_kmeans)
-# plt.title('num clusters = ' + str(clus))
-
-#%% Sample uniformly from each cluster
-
-# #find min number of samples in smallest cluster 
-# minbin = plt.hist(y_kmeans)[0].min()
-
-# #identify indeces for each cluster within XDSamp/y_kmeans
-# for this_clus in np.unique(y_kmeans):
-#     this_clus_ind = np.where(y_kmeans == this_clus)[0]
-#     #extract random indeces of samples from a given cluster
-#     this_sub_samp = np.random.choice(this_clus_ind.astype(int), size=minbin.astype(int), replace=False)
-#     #concatenate random samples into a new array 
-#     if this_clus ==0 :
-#         sub_samp = this_sub_samp
-#     else:
-#         sub_samp = np.append(sub_samp, this_sub_samp)
-
-# #randomize order so clusters are not grouped
-# np.random.shuffle(sub_samp)
-
-#%% Use samples from clusters as input to umap to generate a 2D embedding
-
-#comp = 2
-# t = TSNE(n_components=comp, verbose = 2)
-# tsne = t.fit_transform(XDSamp.iloc[sub_samp,:])
-# np.savetxt("D:/data/BehaviorData/RW_data/tsneOutDS" + str(downsamp) + "_kmeans_subsamp.csv", tsne, delimiter=",")
