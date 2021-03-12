@@ -133,7 +133,9 @@ def plotEmbeddedByBx(bx_labels, embedding_all, this_session, labels_included):
     fig = plt.figure()
     ax = plt.axes(title='UMAP all points embedded. n='+ str(embedding_all.shape[0]) + ' ' + this_session + ' cyan=reward, gbk=obstacle')
     
-    bx_labels = bx_labels[0:-1] #trim because bx_labels has n-1 frames
+    #trim because embedding has n-1 frames compared to bx_labels
+    if len(bx_labels) == len(embedding_all) + 1:
+        bx_labels = bx_labels[0:-1] 
     
     #plot data points
     if 'other' in labels_included:
@@ -230,6 +232,39 @@ for this_sess in data_fn_list:
     
     #clear memory 
     del this_spect, bx_labels
+
+#%% Multi-mouse scatterplot with behavior labels 
+
+umap_dir = 'D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/' 
+save_dir = 'D:/data/BehaviorData/RW_data/analysisOutputs/multiMouse'
+embed_date = '210310'
+n_sess = len(data_fn_list)
+title_str = 'mulitMouse embedding n=' + str(n_sess) + ' mice'
+
+for this_sess in data_fn_list:
+    print(this_sess)
+    
+    this_data_dir = 'D:/data/BehaviorData/RW_data/' + this_sess + '/' + this_sess
+    
+    #load the umap embedding and bheavior labels
+    this_embed = genfromtxt(umap_dir + '/' + this_sess + 'multiMouseEmbed_' + embed_date + '.csv',
+                            delimiter=',')
+    this_bx = genfromtxt(this_data_dir + '_bxLabelsArray.csv', 
+                           delimiter=',')
+    this_bx = this_bx[0:-1]
+    
+    #select every nth frame where n=#mice
+    if this_sess == data_fn_list[0]:
+        group_embed = np.array(this_embed[::n_sess])
+        group_bx = np.array(this_bx[::n_sess])
+    else:      
+        group_embed = np.concatenate((group_embed, this_embed[::n_sess]))
+        group_bx = np.concatenate((group_bx, this_bx[::n_sess]))
+    
+#plot all the points
+plotEmbeddedByBx(group_bx, group_embed, 
+                 title_str, 
+                 ['reward', 'obst', 'other'])
 
 #%% SINGLE MOUSE - perform UMAP on downsampled data
 

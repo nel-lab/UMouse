@@ -27,18 +27,15 @@ print(data_fn)
 data_dir = 'D:/data/BehaviorData/RW_data/' + data_fn + '/'
 
 #%% import dependencies
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy import genfromtxt
-from sklearn.decomposition import PCA, NMF, KernelPCA, FastICA
-from sklearn.manifold import TSNE
-from sklearn.cluster import KMeans
-from mpl_toolkits import mplot3d
-import cv2
+#from mpl_toolkits import mplot3d
 
 #%% access the data
-
+ 
 trackingDf = pd.read_csv(data_dir + data_fn + '_Df.csv') 
 pawsRS = genfromtxt(data_dir + data_fn + '_pawsArray.csv', delimiter=',') 
 
@@ -64,13 +61,23 @@ freqs, power, X_new = wavelet_transform(mwt_input,
 print('Morlet Wavelet Transform complete. Saving variables.')
 np.savetxt(data_dir + data_fn + '_mwtFreqs.csv', freqs, delimiter=",")
 np.savetxt(data_dir + data_fn + '_mwtPower.csv', power, delimiter=",")
-np.savetxt(data_dir + data_fn + '_mwtXNew.csv', X_new[0:(n_freqs*pawsRS.shape[1]-1),:], delimiter=",")
+np.savetxt(data_dir + data_fn + '_mwtXNew.csv', X_new[:,0:(n_freqs*pawsRS.shape[1])], 
+           delimiter=",")
 
 #save variables with jaw angles and body angles for use later
-np.savetxt(data_dir + data_fn + '_jawBod_mwtXNew.csv', X_new, delimiter=",")
+#np.savetxt(data_dir + data_fn + '_jawBod_mwtXNew.csv', X_new, delimiter=",")
+
+#%% OPTIONAL - shortcut if you have already performed behavelet
+if X_new not in locals():
+    
+    #without jaw angle and body angle
+    #X_new = genfromtxt(data_dir + data_fn + '_mwtXNew.csv', delimiter=',')
+    
+    #with jaw angle and body angle
+    X_new = genfromtxt(data_dir + data_fn + '_jawBod_mwtXNew.csv', delimiter=',')
 
 #%%  plot the behavelet data
- 
+    
 #plot spectropgrahic data with vertical lines indicating whisker contact and reward
 wiskArray = np.array(np.where(trackingDf['wiskContTimeBool'])[0])
 rewardArray = np.array(np.where(trackingDf['rewardBool'])[0])
@@ -105,110 +112,30 @@ plt.ylabel('Paws * dimensions')
 plt.xlabel('frame # at 250Hz')
 plt.savefig(data_dir + data_fn + 'spectImg')
 
-#%% OPTIONAL - shortcut if you have already performed behavelet
+#%% plot whisk contact time triggered averages
 
-#without jaw angle and body angle
-#X_new = pd.read_csv(data_dir + data_fn + '_mwtXNew.csv')
-#with jaw angle and body angle
-#X_new = pd.read_csv(data_dir + data_fn + '_jawBod_mwtXNew.csv')
+plotWiskWindow = np.array(range(-125,250))
+if 'wiskArray' not in locals():
+    wiskArray = np.array(np.where(trackingDf['wiskContTimeBool'])[0])
 
-#X_new = X_new.to_numpy() #from pandas series
+#find all frame #s of the first whisk in a whisker contact sequence
 
-#%% Separate obstacle times into early and late
+for wiskInd,thisWisk in enumerate(wiskArray):
+    if wiskInd==0:
+        all_wisk = X_new[plotWiskWindow + thisWisk,:]
+    elif thisWisk >= len(wiskArray)-250:
+        break
+    elif thisWisk - wiskArray[wiskInd-1]>1:
+        all_wisk = np.stack((X_new[plotWiskWindow + thisWisk,:]))
 
-obstDiff = np.diff(trackingDf['obstacleBool'])
+fig = plt.figure()
+ax1 = fig.add_axes([0,0,1,1])
+ax1.imshow(np.mean(all_wisk, axis=0).T, aspect='auto')
+ax1.axvline(x=-plotWiskWindow[0], color = 'w', lw=0.5)
 
-obstStart = np.where(obstDiff==1)[0] + 1 #add 1 to adjust index for np.diff
-obstEnd = np.where(obstDiff==-1)[0] + 1
+plt.savefig(data_dir + data_fn + 'whiskTrigAvgSpectro')
 
-obstEarly = np.zeros([1,len(trackingDf['obstacleBool'])])
-obstMid   = np.zeros([1,len(trackingDf['obstacleBool'])])
-obstLate  = np.zeros([1,len(trackingDf['obstacleBool'])])
-
-n_div = 3
-
-#Make separate indeces for early, middle, and late obstacle times
-for bout in range(0, len(obstStart)):
-    assert obstStart[bout] < obstEnd[bout]
-    
-    obstDur = obstEnd[bout] - obstStart[bout]
-    
-    #make sure that the duration is divisible by the number of groups. 
-    if obstDur % 3 != 0: #trim off the front end of the duration index until no remainder
-        obstInd = np.array(range(obstStart[bout] + (obstDur % 3), obstEnd[bout])) 
-    else:
-        obstInd = np.array(range(obstStart[bout], obstEnd[bout]))
-    
-    splitInds = np.split(obstInd, n_div)
-    
-    #hardcoded this bit for 3 groups but could be moded for any n groups
-    obstEarly[0][splitInds[0]] = 1
-    obstMid[0][splitInds[1]] = 1
-    obstLate[0][splitInds[2]] = 1 
-    
-# #make labels for each principal component data point
-# PC_labels = np.zeros([1,len(pca)])
-# # 1 = reward
-# PC_labels[0, [np.where(trackingDf.rewardBool[PCA_points_ix] ==1)]] = 1
-
-# # 2= early obstacle   3 = mid obstacle   4 = late obstacle
-# PC_labels[0, [np.where(obstEarly.T[PCA_points_ix] ==1)]] = 2
-# PC_labels[0, [np.where(obstMid.T[PCA_points_ix] ==1)]] = 3
-# PC_labels[0, [np.where(obstLate.T[PCA_points_ix] ==1)]] = 4
-
-#Make behavior label for un-downsampled data
-# 1=reward  2= early obstacle   3 = mid obstacle   4 = late obstacle
-PC_labels = np.zeros([1,len(pawsRS)])
-PC_labels[0, [np.where(trackingDf.rewardBool ==1)]] = 1
-PC_labels[0, [np.where(obstEarly.T ==1)]] = 2
-PC_labels[0, [np.where(obstMid.T ==1)]] = 3
-PC_labels[0, [np.where(obstLate.T ==1)]] = 4
-
-np.savetxt(data_dir + data_fn + "_bxLabelsArray.csv", 
-           PC_labels, 
-           delimiter=",")
-
-#%% Mostly older code from here on out
-
-#%% PLOT 3D color coded PCs
-
-# scores_plot = pca
-
-# fig = plt.figure()
-# ax = plt.axes(projection='3d', title='pca First 3 PCs for behavelet locomotion data.')
-
-# #ax.scatter(*scores_plot.T[:,[np.where(PC_labels==0)[1]]], c='r', marker='o', alpha=0.05) #other
-# ax.scatter(*scores_plot.T[:,[np.where(PC_labels==1)[1]]], c='c', marker='o', alpha=0.2) #reward
-# ax.scatter(*scores_plot.T[:,[np.where(PC_labels==2)[1]]], c='g', marker='o', alpha=0.2) #obst1/3
-# #ax.scatter(*scores_plot.T[:,[np.where(PC_labels==3)[1]]], c='b', marker='o', alpha=0.2)
-# ax.scatter(*scores_plot.T[:,[np.where(PC_labels==4)[1]]], c='k', marker='o', alpha=0.2)
-
-# ax.set_xlabel('Dim 1')
-# ax.set_ylabel('Dim 2')
-# ax.set_zlabel('Dim 3')
-
-#%% TSNE-2dim, Gaussian filter, and kmeans clustering
-
-# #treat the heatmap like a 3d image, sort of like a mountain plot. 
-# tsneGaussCoords = []
-# for Xpix in range(tsneImgGauss.shape[0]):
-#     for Ypix in range(tsneImgGauss.shape[1]):
-#         if tsneImgGauss[Xpix,Ypix] > 0:
-#             tsneGaussCoords.append([Xpix, Ypix, tsneImgGauss[Xpix,Ypix]])
-# tsneGaussCoords = np.array(tsneGaussCoords)
-# tsneGaussCoordsNorm = tsneGaussCoords
-# tsneGaussCoordsNorm[:,2] *= 100
-
-# #run kmeans clustering and get labels 
-# clus=9
-# tsneCluster = KMeans(n_clusters = clus)
-# tsneKmeans = tsneCluster.fit(tsneGaussCoords)
-# y_kmeans = tsneKmeans.labels_ #tsneKmeans.predict(tsneGaussCoords)
-
-# #plot as a scatterplot 
-# fig_all = plt.figure()
-# ax = plt.axes(title='tsne, gaussian, kmeans clustering. clusters='+str(clus))
-# plt.scatter(tsneGaussCoords[:,0], tsneGaussCoords[:,1], c=y_kmeans, s=50, alpha=0.4, cmap='viridis')
-# ax.scatter(*tsneKmeans.cluster_centers_.T, c='k', marker='x')
-
+# if X_new.shape[1] > 300:
+#     X_new = X_new[:,0:300]
+        
 
