@@ -131,48 +131,71 @@ def plotEmbeddedByBx(bx_labels, embedding_all, this_session, labels_included, fi
 #%% MANY MOUSE  umap embedding
 
 #determine # of sessions to be divided up
+nn_list = [20]
+md_list = [0.025]
+tot_embed_fr = 50000
 n_sess = len(data_fn_list8)
-tot_embed_fr = 25000
-fr_per_sess = int(np.round(25000/n_sess))
+fr_per_sess = int(np.round(tot_embed_fr/n_sess))    
+
+from sklearn import preprocessing
 
 #collect a sample of frames from each session
-for this_sess in data_fn_list8:
-    print(this_sess)
+for n_neighbors, min_dist in zip(nn_list, md_list):
+    for this_sess in data_fn_list8:
+        print(this_sess)
+        
+        #load tracking dataframe, save jaw/body angles 
+        #trackingDf = pd.read_csv('D:/data/BehaviorData/RW_data/' + this_sess + '/' +this_sess + '_Df.csv')
+        #trackingDf = trackingDf[['jawVarX', 'bodyAngles']].to_numpy()
+        
+        #load spectrographic data
+        this_data_dir = 'D:/data/BehaviorData/RW_data/' + this_sess + '/' +this_sess + '_jawBod_mwtXNew.csv'
+        this_spect = pd.read_csv(this_data_dir, header=None)
+        this_spect = this_spect.to_numpy()
+        
+        # remove jaw/body angle spect data and replace with raw angles
+        #this_spect = this_spect[:,0:300] 
+       #this_spect = np.concatenate((this_spect, trackingDf), axis=1)
     
-    #load spectrographic data
-    this_data_dir = 'D:/data/BehaviorData/RW_data/' + this_sess + '/' +this_sess + '_jawBod_mwtXNew.csv'
-    this_spect = pd.read_csv(this_data_dir)
-    this_spect = this_spect.to_numpy()
-
-    #select the frames to sample
-    n_frames = len(this_spect)
-    samp_frames = np.round(np.linspace(0, n_frames, num=fr_per_sess, endpoint=False))
-    samp_frames = list(samp_frames.astype(int))
+        #select the frames to sample
+        n_frames = len(this_spect)
+        samp_frames = np.round(np.linspace(0, n_frames, num=fr_per_sess, endpoint=False))
+        samp_frames = list(samp_frames.astype(int))
+            
+        #collect sample frames 
+        if this_sess == data_fn_list8[0]:
+            multi_samp = this_spect[samp_frames,:]
+        else:
+            multi_samp = np.concatenate((multi_samp, this_spect[samp_frames,:]))
+            
+        del this_spect
+    
+    #need to use preprocessing since we are using processed and unprocessed data
+    scaler = preprocessing.MinMaxScaler().fit(multi_samp)
+    scaler.transform(multi_samp)
         
-    #collect sample frames 
-    if this_sess == data_fn_list8[0]:
-        multi_samp = this_spect[samp_frames,:]
-    else:
-        multi_samp = np.concatenate((multi_samp, this_spect[samp_frames,:]))
-        
-    del this_spect
-       
-#perform umap embedding
-reducer = umap.UMAP(n_neighbors=25, min_dist=0.05)
-mapper = reducer.fit(multi_samp)
-embedding = mapper.embedding_
+    #perform umap embedding
+    reducer = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist)
+    mapper = reducer.fit(multi_samp)
+    embedding = mapper.embedding_
+    
+    #save the model so you can load it later
+    mapper_fn = "D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/" + \
+        'umap_multiMouse_model_md' + str(mapper.min_dist)[-2::] + '_nn' + str(mapper.n_neighbors) 
+    joblib.dump(mapper, mapper_fn)
+    
+    #load the model
+    # mapper = joblib.load(mapper_fn)
+    
+    #plot
+    fig = plt.figure()
+    umap.plot.points(mapper)
+    plt.title('UMAP embedding: 8 mouse embedding, n=50k, min_dist=' + \
+              str(mapper.min_dist) + ', n_neighbors=' + str(mapper.n_neighbors))
+    fig.savefig('D:/data/BehaviorData/RW_data/analysisOutputs/multiMouse/multiMouse_md' + \
+                str(mapper.min_dist)[-2::] + '_nn' + str(mapper.n_neighbors))
 
-#save the model so you can load it later
-mapper_fn = "D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/" + 'umap_multiMouse_model_' + todaystr 
-joblib.dump(mapper, mapper_fn)
-
-#load the model
-# mapper = joblib.load(mapper_fn)
-
-#plot
-plt.title('UMAP embedding: 8 mouse embedding, n=25k')
-
-#%% collect a sample of frames from each session
+#%% use multimouse model to make embeddings for each mouse and save embedding
 
 save_dir = 'D:/data/BehaviorData/RW_data/analysisOutputs/mouseLeapSavedVars/'    
 print('make embeddings for all mice using the multimouse model')
@@ -180,15 +203,28 @@ print('make embeddings for all mice using the multimouse model')
 for this_sess in data_fn_list8:
     print(this_sess)
     
-    this_data_dir = 'D:/data/BehaviorData/RW_data/' + this_sess + '/' + this_sess
+    #load tracking dataframe, save jaw/body angles 
+    trackingDf = pd.read_csv('D:/data/BehaviorData/RW_data/' + this_sess + '/' +this_sess + '_Df.csv')
+    trackingDf = trackingDf[['jawVarX', 'bodyAngles']].to_numpy()
     
     #load spectrographic data
+    this_data_dir = 'D:/data/BehaviorData/RW_data/' + this_sess + '/' + this_sess
     this_spect = pd.read_csv(this_data_dir + '_jawBod_mwtXNew.csv')
     this_spect = this_spect.to_numpy()
+    # if len(trackingDf) > len(this_spect):
+    #     trackingDf = trackingDf[0:-1]
+    
+    # remove jaw/body angle spect data and replace with raw angles
+    #this_spect = this_spect[:,0:300] 
+    #this_spect = np.concatenate((this_spect, trackingDf), axis=1)
+        
+    #need to use preprocessing since we are using processed and unprocessed data
+    scaler = preprocessing.StandardScaler().fit(this_spect)
+    scaler.transform(this_spect)
     
     #transform the data and save a copy
     this_embed = mapper.transform(this_spect)
-    np.savetxt(save_dir + this_sess + 'multiMouseEmbed_' + todaystr + '.csv', 
+    np.savetxt(this_data_dir + '_multiMouseEmbed_50k_' + todaystr + '.csv', 
             this_embed,
             delimiter=",")
     
@@ -197,11 +233,10 @@ for this_sess in data_fn_list8:
                            delimiter=',')
     plotEmbeddedByBx(bx_labels, this_embed, this_sess, 
                      ['reward', 'obst', 'other'], 
-                     fig_dir = this_data_dir + '_multiMouse_embedAllPoints',
-                     fig_dir=False)
+                     fig_dir = this_data_dir + '_multiMouse_embedAllPoints_'+ todaystr)
     
     #save figure
-    fig.savefig(this_data_dir + '_multiMouse_embedAllPoints')
+    #fig.savefig(this_data_dir + '_multiMouse_embedAllPoints_' + todaystr)
     
     #clear memory 
     del this_spect, bx_labels
@@ -328,6 +363,7 @@ ax.scatter(*embedding_all.T[:,[np.where(whiskCont==1)[0]]], c='b', marker='o', s
 
 ax.set_xlabel('Dim 1')
 ax.set_ylabel('Dim 2')
+
 
 #%% Calculate the Gaussian KDE
 
