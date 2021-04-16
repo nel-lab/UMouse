@@ -16,8 +16,6 @@ import pandas as pd
 from numpy import genfromtxt
 from scipy.io import loadmat
 
-from scipy import interpolate
-import math
 
 #make a list of datasets
 data_fn_list  = list(['201115_000', 
@@ -114,46 +112,6 @@ plot_n_trials = 12
 plot_trial_trajectory(rewardFrames, obstFrames, umap_embedding, plotting_timestep, plot_n_trials)
 
 
-#%% Force field plotting 
-
-down_samp = 100
-cmap = mpl.cm.hsv #cyclical cmap for angle
-
-#load data points 
-# umap_embedding = genfromtxt(data_dir + data_fn + '_multiMouseEmbed_50k_' + embed_date + '.csv', 
-#                            delimiter=',')
-
-#downsample and calculate vector components
-x = umap_embedding[0::down_samp,0]
-y = umap_embedding[0::down_samp,1]
-u = x[1::] - x[0:-1]
-v = y[1::] - y[0:-1]
- 
-# use quiver to plot the arrows
-plt.figure(1, dpi=200)
-plt.quiver(x[0:-1], y[0:-1], u, v)
-
-#calculate anlge of each arrow
-theta = math.atan(u/v)
-theta *= 180/3.1415 # rads to degs
-
-
-# use interpolation to creat a 2D field of vectors
-xx_min, yy_min = np.min(umap_embedding,axis=0)
-xx_max, yy_max = np.max(umap_embedding,axis=0)
-
-xx = np.linspace(np.floor(xx_min), np.ceil(xx_max), 100)
-yy = np.linspace(np.floor(yy_min), np.ceil(yy_max), 100)
-xx, yy = np.meshgrid(xx, yy)  
-
-points = np.transpose(np.vstack((x[0:-1], y[0:-1])))
-u_interp = interpolate.griddata(points, u, (xx, yy), method='linear')
-v_interp = interpolate.griddata(points, v, (xx, yy), method='linear')
-#xi=points at which to interpolate data
-
-plt.figure(2, dpi=200)
-plt.quiver(xx, yy, u_interp, v_interp)
-plt.show()
 
 
 
