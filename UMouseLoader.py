@@ -12,18 +12,20 @@ inputs pathnames for behavior files
 @author: Jake
 """
 
+# How do I make it so that the args are passed from load_mwt_label() into the submethods? 
+
+
 class UMouseLoader:
     
     
-    def __init__(self, pathnames, output_dir):
+    def __init__(self, expt_pathname, output_dir):
         """
         
         Parameters
         ----------
-        filenames : list of strings
-            lsit of strings containing the filename for each experiment
-        pathnames : list of strings
-            list of string with one pathname for each dataset to analyze.
+
+        expt_pathname : string
+            path for the dataset to be analyzed.
         output_dir : string
             destination for analysis outputs.
 
@@ -33,12 +35,11 @@ class UMouseLoader:
 
         """
         
-        #get the filename for experiemnts
-        self.filenames = list(map(os.path.basename, pathnames))
+        #get the filename for experiemnt
+        self.filename = os.path.basename(expt_pathname) 
         
         # save pathnames as a class field
-        assert type(pathnames) == list
-        self.pathnames = pathnames
+        self.pathname = expt_pathname
         
         #save output dir as a class field
         self.output_dir = output_dir
@@ -311,3 +312,11 @@ class UMouseLoader:
         bx_labels = self.label_behavior(behavior_df)
         
         return behavior_df, freqs, power, mwt_df, bx_labels
+    
+    def save_outputs(self, behavior_df, freqs, power, mwt_df, bx_labels):
+        #save spectrographic data as dataframe to retain the labels
+        #or save as a dictionary
+        
+        
+        
+        
