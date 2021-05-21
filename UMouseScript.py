@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Apr 29 14:03:04 2021
 
 # script for using the UMouse software package
 
-@author: Jake
+@author: William Heffley
 """
 
 import UMouseLoader
@@ -49,7 +48,7 @@ um_plot.plot_embedding(aggregate=True)
 
 #embedding plot labelled with behavior points, default to true, add kwargs for plotting params (alpha, etc)
 #  Make more general. Pass in a vector or list or vectors if aggregate=True
-um_plot.bx_labels(aggregate=True, label_vector=vec)
+um_plot.plot_bx_labels(aggregate=True, label_vector=vec)
 
 #quiver plot, group or individual. Direction or magnitude
 #will need to pass a mouse index

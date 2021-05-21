@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan  5 10:19:27 2021
 
 to run after behavelet_and_decomp.py
  
  perfrom UMAP on a sample of the mwt data. Then embed the remaining frames 
  into that 2D space. 
  
-@author: Jake
+@author: William Heffley
 """
 #make a list of datasets
 data_fn_list9  = list(['181215_003', '201115_000', 
@@ -155,7 +154,7 @@ for n_neighbors, min_dist in zip(nn_list, md_list):
         
         # remove jaw/body angle spect data and replace with raw angles
         #this_spect = this_spect[:,0:300] 
-       #this_spect = np.concatenate((this_spect, trackingDf), axis=1)
+        #this_spect = np.concatenate((this_spect, trackingDf), axis=1)
     
         #select the frames to sample
         n_frames = len(this_spect)

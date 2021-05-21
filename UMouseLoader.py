@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Apr 22 09:00:54 2021
 
 Refactored code for the UMouse pipeline
 Loading and preprocessing class
@@ -9,16 +8,19 @@ Take data from Richard Warren's locomotion setup.
 Open, preprocess, and convert to dataframe.
 
 inputs pathnames for behavior files 
-@author: Jake
+@author: William Heffley
 """
-
-# How do I make it so that the args are passed from load_mwt_label() into the submethods? 
-
+ 
+import os
+import numpy as np
+import pandas as pd
+import behavelet
+from scipy.io import loadmat
 
 class UMouseLoader:
     
     
-    def __init__(self, expt_pathname, output_dir):
+    def __init__(self, expt_pathname, output_dir=None, paws_list=None):
         """
         
         Parameters
@@ -27,7 +29,7 @@ class UMouseLoader:
         expt_pathname : string
             path for the dataset to be analyzed.
         output_dir : string
-            destination for analysis outputs.
+            destination for analysis outputs. If no destination is specified they will be saved to pathname
 
         Returns
         -------
@@ -36,13 +38,16 @@ class UMouseLoader:
         """
         
         #get the filename for experiemnt
-        self.filename = os.path.basename(expt_pathname) 
+        self.filename = os.path.basename(expt_pathname)
         
         # save pathnames as a class field
         self.pathname = expt_pathname
         
         #save output dir as a class field
-        self.output_dir = output_dir
+        if output_dir is None:
+            self.output_dir = self.pathname
+        else:
+            self.output_dir = output_dir
         
         #identify the paws to be tracked and label them Front/Back, Left,Right, X/Y/Z
         if paws_list == None:
@@ -69,6 +74,7 @@ class UMouseLoader:
             Pandas dataframe containing the dlc coordinates and behavior variables.
 
         """
+        
         #default value for analysis windows
         if lick_window is None:
             lick_window = 0.05
@@ -192,18 +198,18 @@ class UMouseLoader:
         frame_rate = np.round(1/np.mean(np.diff(behavior_df['timeStamps'][0:1000])))
             
         # construct input array for MWT
-        mwt_input = behavior_df.iloc[:,[paws_list]]
-        mwt_cols = paws_list
+        mwt_input = behavior_df[self.paws_list]
+        mwt_cols = self.paws_list
         
         if bodyAngle:
             np.concatenate(mwt_input,
-                            behavior_df['bodyAngles'].to_numpy().reshape(len(pawsRS),1),
+                            behavior_df['bodyAngles'].to_numpy().reshape(len(behavior_df),1),
                             axis=1)
             mwt_cols.append('bodyAngles')
         
         if jawAngle:
             np.concatenate(mwt_input,
-                            behavior_df.iloc[:['jawVarX', 'jawVarY']].to_numpy().reshape(len(pawsRS),2),
+                            behavior_df.iloc[:['jawVarX', 'jawVarY']].to_numpy().reshape(len(behavior_df),2),
                             axis=1)   
             mwt_cols.append('jawVarX', 'jawVarY')
         
@@ -280,7 +286,7 @@ class UMouseLoader:
         
         return bx_labels
         
-    def load_mwt_label(self, expt_pathname):
+    def load_mwt_label(self, expt_pathname, saveVars=False):
         """
         performs all three transformations on each data set listed in the pathnames variable
 
@@ -311,12 +317,59 @@ class UMouseLoader:
         
         bx_labels = self.label_behavior(behavior_df)
         
+        if saveVars == True:
+            self.save_outputs(self, behavior_df=behavior_df, freqs=freqs, power=power, mwt_df=mwt_df, bx_labels=bx_labels)
+        
         return behavior_df, freqs, power, mwt_df, bx_labels
     
-    def save_outputs(self, behavior_df, freqs, power, mwt_df, bx_labels):
-        #save spectrographic data as dataframe to retain the labels
-        #or save as a dictionary
+    def save_outputs(self, behavior_df=None, freqs=None, power=None, mwt_df=None, bx_labels=None):
+        """
+        Optionally saves all output variables produced by UMouseLoader
+
+        Parameters
+        ----------
+        behavior_df : dataframe shape (n_samples, n_cols)
+            Pandas dataframe containing the dlc coordinates and behavior variables.
+        freqs : ndarray, shape (n_freqs)
+            The frequencies used for the wavelet transform
+        power : ndarray, shape (n_samples)
+            The total power for each row in X_new
+        mwt_df : pandas nd dataframe, shape (n_samples, n_features*n_freqs)
+            Continuous wavelet transformed data
+        bx_labels : ndarray shape(1,n_samples)
+            vector with coded values for non-overlapping events in each trial. 
+            1=reward  2= early obstacle   3 = mid obstacle   4 = late obstacle
+
+        Returns
+        -------
+        None.
+
+        """
         
+        try: 
+            behavior_df.to_csv(path_or_buf = self.output_dir + self.filename + '_behavior_df.csv', index=False)
+        except:
+               print('error while saving behavior_df') 
+    
+        try:
+            np.savetxt(self.output_dir + self.filename + '_freqsArray.csv', freqs, delimiter=",")
+        except:
+               print('error while saving freqs') 
+        
+        try:
+            np.savetxt(self.output_dir + self.filename + '_powerArray.csv', power, delimiter=",")
+        except:
+               print('error while saving power') 
+        
+        try: 
+            mwt_df.to_csv(path_or_buf = self.output_dir + self.filename + '_mwt_df.csv', index=False)
+        except:
+               print('error while saving mwt_df') 
+        
+        try:
+            np.savetxt(self.output_dir + self.filename + "_bxLabelsArray.csv", bx_labels, delimiter=",")
+        except:
+               print('error while saving bx_labels') 
         
         
         
