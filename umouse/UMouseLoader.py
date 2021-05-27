@@ -7,20 +7,20 @@ Loading and preprocessing class
 Take data from Richard Warren's locomotion setup.
 Open, preprocess, and convert to dataframe.
 
-inputs pathnames for behavior files 
+inputs pathnames for behavior .mat files 
+
 @author: William Heffley
 """
  
 import os
 import numpy as np
 import pandas as pd
-from behavelet import wavelet_transform
 from scipy.io import loadmat
 
-class UMouseLoader:
+class WagnerLoader:
     
     
-    def __init__(self, expt_pathname, output_dir=None, paws_list=None):
+    def __init__(self, expt_pathname, output_path=None, paws_list=None):
         """
         
         Parameters
@@ -28,7 +28,7 @@ class UMouseLoader:
 
         expt_pathname : string
             path for the dataset to be analyzed.
-        output_dir : string
+        output_path : string
             destination for analysis outputs. If no destination is specified they will be saved to pathname
 
         Returns
@@ -37,17 +37,14 @@ class UMouseLoader:
 
         """
         
-        #get the filename for experiemnt
-        self.filename = os.path.basename(expt_pathname)
-        
         # save pathnames as a class field
         self.pathname = expt_pathname
         
         #save output dir as a class field
-        if output_dir is None:
-            self.output_dir = self.pathname
+        if output_path is None:
+            self.output_path = expt_pathname.split('.')[0] + '_behavior_df'
         else:
-            self.output_dir = output_dir
+            self.output_path = output_path
         
         #identify the paws to be tracked and label them Front/Back, Left,Right, X/Y/Z
         if paws_list == None:
@@ -58,8 +55,7 @@ class UMouseLoader:
         else:
             self.paws_list = paws_list
         
-    def load_data(self, expt_pathname, lick_window=None, 
-                  whisk_react_window=None, reward_window=None):
+    def to_data_frame(self, expt_pathname, lick_window=None, whisk_react_window=None, reward_window=None):
         """
         load the matlab data set, clean the data, and convert to a pandas dataframe
         
@@ -71,7 +67,7 @@ class UMouseLoader:
         Returns
         -------
         behavior_df : dataframe shape (n_samples, n_cols)
-            Pandas dataframe containing the dlc coordinates and behavior variables.
+            Pandas dataframe containing the dlc coordinates and behavior event variables.
 
         """
         
@@ -159,217 +155,8 @@ class UMouseLoader:
         if 'wiskContactTimes' in list(mat_data.keys()):
             behavior_df['wiskContTimeBool'] = wiskContTimeBool
         
+        #save the behavior df
+        behavior_df.to_csv(path_or_buf = self.output_path, index=False)
+        
         return behavior_df
-        
-    def mwt(self, behavior_df, n_frequencies=None, fmin=None, fmax=None,
-            bodyAngle=True, jawAngle=True): #get rid of bodyAngle, jawAngle. Convert to kwargs
-        """
-        Perform morlet wavelett transformation on the DLC data
-
-        Parameters
-        ----------
-        behavior_df : pandas dataframe
-            dataframe containing the DLC trajectory data.
-        n_frequencies : int
-            number of groups to divide the frequencies range into.
-        fmin : float
-            minimum frequency of interest for the wavelet transformation.
-        fmax : float
-            maximum frequency of interest for the wavelet transformation..
-
-        Returns
-        -------
-        freqs : ndarray, shape (n_freqs)
-            The frequencies used for the wavelet transform
-        power : ndarray, shape (n_samples)
-            The total power for each row in X_new
-        mwt_array : numpy array, shape (n_samples, n_features*n_freqs)
-            Continuous wavelet transformed data
-
-        """
-        
-        #default value for Morlet Wavelet Transformation
-        if n_frequencies is None:
-            n_frequencies = 25
-        if fmin is None:
-            fmin = 1.
-        if fmax is None:
-            fmax = 50.  #set default to 0.5*f_sample
-        frame_rate = np.round(1/np.mean(np.diff(behavior_df['timeStamps'][0:1000])))
-            
-        # construct input array for MWT
-        mwt_input = behavior_df[self.paws_list]
-        mwt_cols = self.paws_list
-        
-        if bodyAngle:
-            np.concatenate((mwt_input, behavior_df['bodyAngles'].to_numpy().reshape(len(behavior_df),1)),
-                            axis=1)
-            mwt_cols.append('bodyAngles')
-        
-        if jawAngle:
-            np.concatenate((mwt_input, behavior_df[['jawVarX', 'jawVarY']].to_numpy().reshape(len(behavior_df),2)),
-                            axis=1)   
-            mwt_cols = mwt_cols + ['jawVarX', 'jawVarY']
-        
-        #perform transformation
-        freqs, power, X_new = wavelet_transform(mwt_input.to_numpy(), 
-                                                n_freqs=n_frequencies, 
-                                                fsample=frame_rate, 
-                                                fmin=fmin, 
-                                                fmax=fmax)
-        
-        #transform MWT data into dataframe
-        #mwt_df = pd.DataFrame(data = X_new, columns=mwt_cols)
-        mwt_array = X_new
-        
-        return freqs, power, mwt_array
-    
-    
-    def label_behavior(self, behavior_df):
-        """
-        label the behavioral timepoints according to the obstacle and reward periods
-
-        Parameters
-        ----------
-        behavior_df : dataframe
-            Pandas dataframe containing the dlc coordinates and behavior variables.
-
-        Returns
-        -------
-        bx_labels : ndarray shape(1,n_samples)
-            vector with coded values for non-overlapping events in each trial. 
-            1=reward  2= early obstacle   3 = mid obstacle   4 = late obstacle
-            
-
-        """
-        
-        # Separate obstacle times into early and late
-        
-        obstDiff = np.diff(behavior_df['obstacleBool'])
-        
-        obstStart = np.where(obstDiff==1)[0] + 1 #add 1 to adjust index for np.diff
-        obstEnd = np.where(obstDiff==-1)[0] + 1
-        
-        obstEarly = np.zeros([1,len(behavior_df['obstacleBool'])])
-        obstMid   = np.zeros([1,len(behavior_df['obstacleBool'])])
-        obstLate  = np.zeros([1,len(behavior_df['obstacleBool'])])
-        
-        n_div = 3
-        
-        #Make separate indeces for early, middle, and late obstacle times
-        for bout in range(0, len(obstStart)):
-            assert obstStart[bout] < obstEnd[bout]
-            
-            obstDur = obstEnd[bout] - obstStart[bout]
-            
-            #make sure that the duration is divisible by the number of groups. 
-            if obstDur % 3 != 0: #trim off the front end of the duration index until no remainder
-                obstInd = np.array(range(obstStart[bout] + (obstDur % 3), obstEnd[bout])) 
-            else:
-                obstInd = np.array(range(obstStart[bout], obstEnd[bout]))
-            
-            splitInds = np.split(obstInd, n_div)
-            
-            #hardcoded this bit for 3 groups but could be moded for any n groups
-            obstEarly[0][splitInds[0]] = 1
-            obstMid[0][splitInds[1]] = 1
-            obstLate[0][splitInds[2]] = 1 
-        
-        #Make behavior label for un-downsampled data point
-        # 1=reward  2= early obstacle   3 = mid obstacle   4 = late obstacle
-        bx_labels = np.zeros([1,len(behavior_df)])
-        bx_labels[0, [np.where(behavior_df.rewardBool ==1)]] = 1
-        bx_labels[0, [np.where(obstEarly.T ==1)]] = 2
-        bx_labels[0, [np.where(obstMid.T ==1)]] = 3
-        bx_labels[0, [np.where(obstLate.T ==1)]] = 4
-        
-        return bx_labels
-        
-    def load_mwt_label(self, expt_pathname, saveVars=False):
-        """
-        performs all three transformations on each data set listed in the pathnames variable
-
-        Parameters
-        ----------
-        expt_pathname : string
-            pathname of the dataset to process.
-
-        Returns
-        -------
-        behavior_df : dataframe shape (n_samples, n_cols)
-            Pandas dataframe containing the dlc coordinates and behavior variables.
-        freqs : ndarray, shape (n_freqs)
-            The frequencies used for the wavelet transform
-        power : ndarray, shape (n_samples)
-            The total power for each row in X_new
-        mwt_array : pandas nd dataframe, shape (n_samples, n_features*n_freqs)
-            Continuous wavelet transformed data
-        bx_labels : ndarray shape(1,n_samples)
-            vector with coded values for non-overlapping events in each trial. 
-            1=reward  2= early obstacle   3 = mid obstacle   4 = late obstacle
-
-        """
-        
-        behavior_df = self.load_data(expt_pathname)
-        
-        freqs, power, mwt_array = self.mwt(behavior_df, bodyAngle=True, jawAngle=True)
-        
-        bx_labels = self.label_behavior(behavior_df)
-        
-        if saveVars == True:
-            self.save_outputs(self, behavior_df=behavior_df, freqs=freqs, power=power, mwt_array=mwt_array, bx_labels=bx_labels)
-        
-        return behavior_df, freqs, power, mwt_array, bx_labels
-    
-    def save_outputs(self, behavior_df=None, freqs=None, power=None, mwt_array=None, bx_labels=None):
-        """
-        Optionally saves all output variables produced by UMouseLoader
-
-        Parameters
-        ----------
-        behavior_df : dataframe shape (n_samples, n_cols*n_freqs)
-            Pandas dataframe containing the dlc coordinates and behavior variables.
-        freqs : ndarray, shape (n_freqs)
-            The frequencies used for the wavelet transform
-        power : ndarray, shape (n_samples)
-            The total power for each row in X_new
-        mwt_array : pandas nd dataframe, shape (n_samples, n_features*n_freqs)
-            Continuous wavelet transformed data
-        bx_labels : ndarray shape(1,n_samples)
-            vector with coded values for non-overlapping events in each trial. 
-            1=reward  2= early obstacle   3 = mid obstacle   4 = late obstacle
-
-        Returns
-        -------
-        None.
-
-        """
-        
-        try: 
-            behavior_df.to_csv(path_or_buf = self.output_dir + self.filename + '_behavior_df.csv', index=False)
-        except:
-               print('error while saving behavior_df') 
-    
-        try:
-            np.savetxt(self.output_dir + self.filename + '_freqsArray.csv', freqs, delimiter=",")
-        except:
-               print('error while saving freqs') 
-        
-        try:
-            np.savetxt(self.output_dir + self.filename + '_powerArray.csv', power, delimiter=",")
-        except:
-               print('error while saving power') 
-        
-        try: 
-            #mwt_df.to_csv(path_or_buf = self.output_dir + self.filename + '_mwt_df.csv', index=False)
-            np.savetxt(self.output_dir + self.filename + '_mwt_array.csv', mwt_array, delimiter=",")
-        except:
-               print('error while saving mwt_array') 
-        
-        try:
-            np.savetxt(self.output_dir + self.filename + "_bxLabelsArray.csv", bx_labels, delimiter=",")
-        except:
-               print('error while saving bx_labels') 
-        
-        
         
