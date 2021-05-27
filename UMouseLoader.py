@@ -162,7 +162,7 @@ class UMouseLoader:
         return behavior_df
         
     def mwt(self, behavior_df, n_frequencies=None, fmin=None, fmax=None,
-            bodyAngle=True, jawAngle=True):
+            bodyAngle=True, jawAngle=True): #get rid of bodyAngle, jawAngle. Convert to kwargs
         """
         Perform morlet wavelett transformation on the DLC data
 
@@ -194,7 +194,7 @@ class UMouseLoader:
         if fmin is None:
             fmin = 1.
         if fmax is None:
-            fmax = 50.
+            fmax = 50.  #set default to 0.5*f_sample
         frame_rate = np.round(1/np.mean(np.diff(behavior_df['timeStamps'][0:1000])))
             
         # construct input array for MWT
@@ -327,7 +327,7 @@ class UMouseLoader:
 
         Parameters
         ----------
-        behavior_df : dataframe shape (n_samples, n_cols)
+        behavior_df : dataframe shape (n_samples, n_cols*n_freqs)
             Pandas dataframe containing the dlc coordinates and behavior variables.
         freqs : ndarray, shape (n_freqs)
             The frequencies used for the wavelet transform
