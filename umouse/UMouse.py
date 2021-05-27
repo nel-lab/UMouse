@@ -11,7 +11,7 @@ from behavelet import wavelet_transform
 import umap
 
 class UMouse:
-    def __init__(self, n_frequencies=25, f_sample=70, fmin=1, fmax=None): #, **kwargs
+    def __init__(self, n_frequencies=25, f_sample=70, fmin=1, fmax=None): 
         """
         
         Parameters
@@ -24,12 +24,10 @@ class UMouse:
             minimum frequency of interest for the wavelet transformation.
         fmax : float
             maximum frequency of interest for the wavelet transformation.
-        
-        (OLD)
-        mwt_paths : string or list
-            path for the spectrographic dataset to be analyzed.
-        output_dir : string
-            destination for analysis outputs. If no destination is specified they will be saved to pathname
+        n_neighbors: int 
+            see UMAP doc
+        n_components: int
+            see UMAP doc
         **kwargs : Misc
             keyword arguments for the UMAP class object initialization
 
@@ -48,53 +46,39 @@ class UMouse:
         self.fmin=fmin
         self.fmax=fmax
         
-        # # save mwt_paths as a class field
-        # if isinstance(mwt_paths, str):
-        #     mwt_paths = list([mwt_paths])
-        # self.mwt_paths = mwt_paths
-        
-        # #get the filename for experiemnt
-        # self.filenames = list(map(os.path.basename, mwt_paths))
-        
-        # #save output dir as a class field
-        # if output_dir is None:
-        #     self.output_dir = list(map(os.path.dirname, self.mwt_paths))
-        # else:
-        #     if isinstance(output_dir, str):
-        #         output_dir = list([output_dir])
-        #     self.output_dir = output_dir
-        
-        #initialize umap object
-        #self.UMAP = umap.UMAP(**kwargs)
+        self.n_neighbors = n_neighbors
+        self.n_components = n_components
         
         
+        #   fr_per_sess : integer, optional
+        # Number of frames to sample from each dataset. Only used if multiple datasets are indicated in fit_path. 
+        # The default is 50000/(n datasets).  
 
-    def fit(self, df=None, columns=None, fr_per_sess=None):
+    def fit_mwt(self, df=None, columns=None):
         """
         Loads frames to generate the embedding fit and performs the fit. Stores model as a class field.
 
         Parameters
         ----------
-        df : dataframe , list of dataframes, opath or list of paths
+        df : dataframe,  a path or list of paths
             Df, Path or list of both for the behavioral data to be analyzed. The input format is compatible with DLC output
 
         columns: list of strings
             in case only a subset of the columns need to be used
 
-        fr_per_sess : integer, optional
-            Number of frames to sample from each dataset. Only used if multiple datasets are indicated in fit_path. 
-            The default is 50000/(n datasets).
-            
-    
-
         Returns
         -------
-        None.
+        Either a matrix, or a list of paths
 
         """
         if type(df) is list:
+           fit_data = [] 
            for ddf in df:
-               
+                df_one_mouse = pd.load_cvs(ddf)
+                spect_data = self._compute_mwt(df_one_mouse, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
+                np.save(ddf.split('.')[0]+'_mwt.npy')
+            else: 
+                df_data = df
            
         else:
             if type(df) is str:
@@ -102,58 +86,98 @@ class UMouse:
             else: 
                 df_data = df
                 
-            fit_data = _compute_mwt(df_data)
-            
-        um_model = self.UMAP.fit(fit_data)
-            
-            
-            
+            fit_data = self._compute_mwt(df_data, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
         
-        #if subset of datasets are not specified for fitting then use all the available datasets
-        if fit_path is None:
-            fit_path = self.mwt_paths
+        return fit_data 
         
-        #single mouse fit
-        if len(fit_path) == 1 | isinstance(fit_path, str):
-            
-            #load the dataset
-            if len(fit_path) == 1:
-                fit_data = self.load_spect_data(fit_path[0])
-            elif isinstance(fit_path, str):
-                fit_data = self.load_spect_data(fit_path)
-            
-            #perform umap
-            um_model = self.UMAP.fit(fit_data)
-            
-            #store the model
-            self.model_ = um_model
-            
-        else: #multi-mouse fit
-        
-            #determine number of frames to take from each session
-            if fr_per_sess == None:
-                fr_per_sess = np.round(50000/len(fit_path))
-            
-            #collect samples from each experiment to be used for a multi-mouse fitting
-            for this_path in fit_path:
-                
-                spect_data = self.load_spect_data(this_path)
-                
-                #select the frames to sample
-                n_frames = len(spect_data)
-                samp_frames = np.round(np.linspace(0, n_frames, num=fr_per_sess, endpoint=False))
-                samp_frames = list(samp_frames.astype(int))
-        
-                #collect sample frames from each mouse
-                if this_path == fit_path[0]:
-                    multi_samp = spect_data[samp_frames,:]
-                else:
-                    multi_samp = np.concatenate((multi_samp, spect_data[samp_frames,:]))
-                    
-                del spect_data
     
-            #perform umap embedding
-            um_model = self.UMAP.fit(multi_samp)
+    
+    def fit_umap(data, fr_per_sess=None, n_neighbors=15, n_components=2,**kwargs):
+        
+        """
+        Loads mwt data to generate the embedding fit. Stores model as a class field.
+
+        Parameters
+        ----------
+        data : npy array or list of paths
+            Df, Path or list of both for the spectrographic data to be analyzed. The input format is compatible with DLC output
+
+      
+
+        Returns
+        -------
+        Either a matrix, or a list of paths
+
+        """
+        
+        #initialize umap object
+        self.UMAP = umap.UMAP(,n_neighbors=15, n_components=2,**kwargs)  
+        
+        if type(data) is list: # if input is a list of pahs load each of them separately
+            if fr_per_sess is None:
+                fr_per_sess = np.round(50000/len(data))
+                
+            fit_data = []
+            for dd in data:
+                if os.path.exists(dd.split('.')[0]+'_mwt.npy'):                    
+                    spect_data = np.load(dd.split('.')[0]+'_mwt.npy') # load precomputed spectrogrpahic data
+                    fit_data.append(spect_data[:-1][::len(spect_data)//fr_per_sess]) # slect only fr_per_sess per mouse
+                else:
+                    raise Exception('File:' + dd.split('.')[0]+'_mwt.npy' + 'does not exist, please run fit_mtw() before')  
+            fit_data = np.array(fit_data)
+        else:
+            fit_data=data
+            
+        self.um_model = self.UMAP.fit(fit_data)
+        
+        
+            
+        
+        # #if subset of datasets are not specified for fitting then use all the available datasets
+        # if fit_path is None:
+        #     fit_path = self.mwt_paths
+        
+        # #single mouse fit
+        # if len(fit_path) == 1 | isinstance(fit_path, str):
+            
+        #     #load the dataset
+        #     if len(fit_path) == 1:
+        #         fit_data = self.load_spect_data(fit_path[0])
+        #     elif isinstance(fit_path, str):
+        #         fit_data = self.load_spect_data(fit_path)
+            
+        #     #perform umap
+        #     um_model = self.UMAP.fit(fit_data)
+            
+        #     #store the model
+        #     self.model_ = um_model
+            
+        # else: #multi-mouse fit
+        
+        #     #determine number of frames to take from each session
+        #     if fr_per_sess == None:
+        #         fr_per_sess = np.round(50000/len(fit_path))
+            
+        #     #collect samples from each experiment to be used for a multi-mouse fitting
+        #     for this_path in fit_path:
+                
+        #         spect_data = self.load_spect_data(this_path)
+                
+        #         #select the frames to sample
+        #         n_frames = len(spect_data)
+        #         samp_frames = np.round(np.linspace(0, n_frames, num=fr_per_sess, endpoint=False))
+        #         samp_frames = list(samp_frames.astype(int))
+        
+        #         #collect sample frames from each mouse
+        #         if this_path == fit_path[0]:
+        #             multi_samp = spect_data[samp_frames,:]
+        #         else:
+        #             multi_samp = np.concatenate((multi_samp, spect_data[samp_frames,:]))
+                    
+        #         del spect_data
+    
+        #     #perform umap embedding
+        #     um_model = self.UMAP.fit(multi_samp)
             
     def transform(self, transform_path=None):
         """
