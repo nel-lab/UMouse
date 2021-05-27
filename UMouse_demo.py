@@ -3,79 +3,44 @@
 
 # In[1]:
 
-
-import UMouseLoader.UMouseLoader
-import UMouseEstimator.UMouseEstimator
-import UMousePlotter.UMousePlotter
-
-
-# In[2]:
+from umouse.UMouseLoader import UMouseLoader
+from umouse.UMouseEstimator import UMouseEstimator
+from umouse.UMousePlotter import UMousePlotter
 
 
-expt_pathname = 'D:/data/BehaviorData/RW_data/201218_000/trackingData_201218_000'
-output_dir = 'D:/data/BehaviorData/RW_data/UMouse_output/'
+#%%
 
+
+expt_pathname = '/Users/andreagiovannucci/NEL-LAB Dropbox/NEL/Datasets/Jake/raw_data/WarrenWheelDatasets/trackingData_201218_000.mat'
+output_dir = '/Users/andreagiovannucci/NEL-LAB Dropbox/NEL/Datasets/Jake/raw_data/WarrenWheelDatasets/'
 
 # # UMouseLoader 
 # Load and preprocess the data
-
-# In[2]:
-
-
-
-
-#initiate the class and pass it the paths for the data and output directory
+#% initiate the class and pass it the paths for the data and output directory
 um_load = UMouseLoader(expt_pathname, output_dir=output_dir)
 #remove pathname definition from initilization and add to loader
 
-
-# In[3]:
-
-
+# %%
 #load the data, perform morlet wavelet transform, and label task events
 #behavior_df, freqs, power, mwt_df, bx_labels = um_load.load_mwt_label(expt_pathname)
 behavior_df = um_load.load_data(expt_pathname)
 
-
-# In[7]:
-
-
+#%%
 freqs, power, mwt_array = um_load.mwt(behavior_df, bodyAngle=True, jawAngle=True)
-
-
-# In[11]:
-
-
+#%%
 print(freqs.shape)
 print(power.shape)
 print(mwt_array.shape)
-
-
-# In[8]:
-
-
+#%%
 bx_labels = um_load.label_behavior(behavior_df)
-
-
-# In[16]:
-
-
+#%%
 #save the variables to a dictionary in the output_dir
 um_load.save_outputs(behavior_df, freqs, power, mwt_array, bx_labels)
-
-
-# # UMouseEstimator
-# 
-
-# In[3]:
-
-
+#%%
 #initialize the estimator object
 mwt_path = ['D:/data/BehaviorData/RW_data/UMouse_output/trackingData_201218_000_mwt_array.csv']
 um_estimate = UMouseEstimator(mwt_path, output_dir)
-
-
-# In[ ]:
+#%%
 
 
 
