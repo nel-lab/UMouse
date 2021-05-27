@@ -6,8 +6,6 @@
 from umouse.UMouseLoader import UMouseLoader
 from umouse.UMouseEstimator import UMouseEstimator
 from umouse.UMousePlotter import UMousePlotter
-
-
 #%%
 
 

@@ -55,11 +55,69 @@ class UMousePlotter:
                 
             self.bx_labels_list = bx_labels_list
         
-    def plot_embedding(self, aggregate=True):
+    def plot_embedding(self, dfs, sep_data=False):
+        '''
+
+        Parameters
+        ----------
+        dfs : dataframe or list of dataframes
+            Data to be plotted.
+        sep_data : bool, optional
+            Display each dataset in different color. The default is False.
+
+        Returns
+        -------
+        None.
+
+        '''
+        
+        a = np.random.rand(5,3)
+        b = np.random.rand(5,3)
+        c = np.random.rand(5,3)
+        a_df = pd.DataFrame(a, columns = ['dim1','dim2','other'])
+        b_df = pd.DataFrame(b, columns = ['dim1','dim2','other'])
+        c_df = pd.DataFrame(c, columns = ['dim1','dim2','other'])
+        
+        
+        
+        dfs = [a_df, b_df, c_df]
+        sep_data=True
+        
+        
+        
+        #######
+        # convert df to list
+        if not isinstance(dfs, list):
+            dfs = list(dfs)
+        
+        if sep_data:
+            colors = None
+        else:
+            colors = 'C0'
+        
+        
         #general embedding plot, can plot for each individual or single plot for group
         fig = plt.figure()
-        ax = plt.axes(title='UMAP embeded points')
-    
+                
+        # plot 3D
+        if 'dim3' in dfs[0].columns:        
+            ax = fig.add_subplot(projection='3d', title='UMAP embeded points',
+                                 xlabel='dimension 1', ylabel = 'dimension 2', zlabel = 'dimension 3')
+            for num, df in enumerate(dfs):
+                ax.scatter(df['dim1'], df['dim2'], df['dim3'], c = colors)
+        # plot 2D
+        else:
+            ax = fig.add_subplot(title='UMAP embeded points', xlabel='dimension 1', ylabel = 'dimension 2')
+            for num, df in enumerate(dfs):
+                ax.scatter(df['dim1'], df['dim2'], c = colors)
+
+        
+                
+                
+                
+                
+                
+        fig.show()
     
     def plot_bx_labels(self, plot_list=None, labels_included=None, fig_dir=None, 
                        aggregate = False, downsample=None, kwargs_dict=None):
