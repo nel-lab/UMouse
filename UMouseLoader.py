@@ -14,7 +14,7 @@ inputs pathnames for behavior files
 import os
 import numpy as np
 import pandas as pd
-import behavelet
+from behavelet import wavelet_transform
 from scipy.io import loadmat
 
 class UMouseLoader:
@@ -183,7 +183,7 @@ class UMouseLoader:
             The frequencies used for the wavelet transform
         power : ndarray, shape (n_samples)
             The total power for each row in X_new
-        mwt_df : pandas nd dataframe, shape (n_samples, n_features*n_freqs)
+        mwt_array : numpy array, shape (n_samples, n_features*n_freqs)
             Continuous wavelet transformed data
 
         """
@@ -202,28 +202,27 @@ class UMouseLoader:
         mwt_cols = self.paws_list
         
         if bodyAngle:
-            np.concatenate(mwt_input,
-                            behavior_df['bodyAngles'].to_numpy().reshape(len(behavior_df),1),
+            np.concatenate((mwt_input, behavior_df['bodyAngles'].to_numpy().reshape(len(behavior_df),1)),
                             axis=1)
             mwt_cols.append('bodyAngles')
         
         if jawAngle:
-            np.concatenate(mwt_input,
-                            behavior_df.iloc[:['jawVarX', 'jawVarY']].to_numpy().reshape(len(behavior_df),2),
+            np.concatenate((mwt_input, behavior_df[['jawVarX', 'jawVarY']].to_numpy().reshape(len(behavior_df),2)),
                             axis=1)   
-            mwt_cols.append('jawVarX', 'jawVarY')
+            mwt_cols = mwt_cols + ['jawVarX', 'jawVarY']
         
         #perform transformation
-        freqs, power, X_new = wavelet_transform(mwt_input, 
+        freqs, power, X_new = wavelet_transform(mwt_input.to_numpy(), 
                                                 n_freqs=n_frequencies, 
                                                 fsample=frame_rate, 
                                                 fmin=fmin, 
                                                 fmax=fmax)
         
         #transform MWT data into dataframe
-        mwt_df = pd.DataFrame(data = X_new, columns=mwt_cols)
+        #mwt_df = pd.DataFrame(data = X_new, columns=mwt_cols)
+        mwt_array = X_new
         
-        return freqs, power, mwt_df
+        return freqs, power, mwt_array
     
     
     def label_behavior(self, behavior_df):
@@ -303,7 +302,7 @@ class UMouseLoader:
             The frequencies used for the wavelet transform
         power : ndarray, shape (n_samples)
             The total power for each row in X_new
-        mwt_df : pandas nd dataframe, shape (n_samples, n_features*n_freqs)
+        mwt_array : pandas nd dataframe, shape (n_samples, n_features*n_freqs)
             Continuous wavelet transformed data
         bx_labels : ndarray shape(1,n_samples)
             vector with coded values for non-overlapping events in each trial. 
@@ -313,16 +312,16 @@ class UMouseLoader:
         
         behavior_df = self.load_data(expt_pathname)
         
-        freqs, power, mwt_df = self.mwt(behavior_df, bodyAngle=True, jawAngle=True)
+        freqs, power, mwt_array = self.mwt(behavior_df, bodyAngle=True, jawAngle=True)
         
         bx_labels = self.label_behavior(behavior_df)
         
         if saveVars == True:
-            self.save_outputs(self, behavior_df=behavior_df, freqs=freqs, power=power, mwt_df=mwt_df, bx_labels=bx_labels)
+            self.save_outputs(self, behavior_df=behavior_df, freqs=freqs, power=power, mwt_array=mwt_array, bx_labels=bx_labels)
         
-        return behavior_df, freqs, power, mwt_df, bx_labels
+        return behavior_df, freqs, power, mwt_array, bx_labels
     
-    def save_outputs(self, behavior_df=None, freqs=None, power=None, mwt_df=None, bx_labels=None):
+    def save_outputs(self, behavior_df=None, freqs=None, power=None, mwt_array=None, bx_labels=None):
         """
         Optionally saves all output variables produced by UMouseLoader
 
@@ -334,7 +333,7 @@ class UMouseLoader:
             The frequencies used for the wavelet transform
         power : ndarray, shape (n_samples)
             The total power for each row in X_new
-        mwt_df : pandas nd dataframe, shape (n_samples, n_features*n_freqs)
+        mwt_array : pandas nd dataframe, shape (n_samples, n_features*n_freqs)
             Continuous wavelet transformed data
         bx_labels : ndarray shape(1,n_samples)
             vector with coded values for non-overlapping events in each trial. 
@@ -362,9 +361,10 @@ class UMouseLoader:
                print('error while saving power') 
         
         try: 
-            mwt_df.to_csv(path_or_buf = self.output_dir + self.filename + '_mwt_df.csv', index=False)
+            #mwt_df.to_csv(path_or_buf = self.output_dir + self.filename + '_mwt_df.csv', index=False)
+            np.savetxt(self.output_dir + self.filename + '_mwt_array.csv', mwt_array, delimiter=",")
         except:
-               print('error while saving mwt_df') 
+               print('error while saving mwt_array') 
         
         try:
             np.savetxt(self.output_dir + self.filename + "_bxLabelsArray.csv", bx_labels, delimiter=",")

@@ -6,13 +6,19 @@ Take preprocessed behavior data from UMouseLoader and perform the UMAP embedding
 @author: William Heffley
 """
 
+import os
+import numpy as np
+import pandas as pd
+from behavelet import wavelet_transform
+import umap
+
 class UMouseEstimator:
-    def __init__(self, pathnames, output_dir=None, **kwargs):
+    def __init__(self, mwt_paths, output_dir=None): #, **kwargs
         """
         
         Parameters
         ----------
-        expt_pathname : string
+        mwt_paths : string or list
             path for the spectrographic dataset to be analyzed.
         output_dir : string
             destination for analysis outputs. If no destination is specified they will be saved to pathname
@@ -24,25 +30,24 @@ class UMouseEstimator:
         None.
 
         """
-        
-        tot_embed_fr = 50000
-        n_sess = len(data_fn_list8)
-        fr_per_sess = int(np.round(tot_embed_fr/n_sess)) 
+        # save mwt_paths as a class field
+        if isinstance(mwt_paths, str):
+            mwt_paths = list([mwt_paths])
+        self.mwt_paths = mwt_paths
         
         #get the filename for experiemnt
-        self.filenames = os.path.basename(pathnames) 
-        
-        # save pathnames as a class field
-        self.pathnames = pathnames
+        self.filenames = list(map(os.path.basename, mwt_paths))
         
         #save output dir as a class field
         if output_dir is None:
-            self.output_dir = self.pathname
+            self.output_dir = list(map(os.path.dirname, self.mwt_paths))
         else:
+            if isinstance(output_dir, str):
+                output_dir = list([output_dir])
             self.output_dir = output_dir
         
         #initialize umap object
-        self.UMAP = umap.UMAP(**kwargs)
+        #self.UMAP = umap.UMAP(**kwargs)
         
     def load_spect_data(expt_pathname):
         """
@@ -74,7 +79,7 @@ class UMouseEstimator:
         ----------
         fit_path : string or list, optional
             Path or list of paths for the spectrographic data to be analyzed. 
-            The default is to use all the datsets in self.pathnames.
+            The default is to use all the datsets in self.mwt_paths.
         fr_per_sess : integer, optional
             Number of frames to sample from each dataset. Only used if multiple datasets are indicated in fit_path. 
             The default is 50000/(n datasets).
@@ -86,7 +91,7 @@ class UMouseEstimator:
         """
         #if subset of datasets are not specified for fitting then use all the available datasets
         if fit_path is None:
-            fit_path = self.pathnames
+            fit_path = self.mwt_paths
         
         #single mouse fit
         if len(fit_path) == 1 | isinstance(fit_path, str):

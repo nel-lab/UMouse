@@ -36,8 +36,6 @@ um_embedding = um_estimate.transform(transform_path = pathnames)
 
 #%% Plot the UMAP embedding
 
-
-
 #initialize plotter class and choose datasets to include in the plot
 #optionally load dlc here
 #load embedding here 
