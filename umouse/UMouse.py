@@ -9,9 +9,10 @@ import numpy as np
 import pandas as pd
 from behavelet import wavelet_transform
 import umap
-
+import os
+#%%
 class UMouse:
-    def __init__(self, n_frequencies=25, f_sample=70, fmin=1, fmax=None): 
+    def __init__(self, n_frequencies=25, f_sample=70, fmin=1, fmax=None, n_neighbors=15, n_components=2,**kwargs): 
         """
         
         Parameters
@@ -44,142 +45,68 @@ class UMouse:
         self.n_frequencies=n_frequencies
         self.f_sample=f_sample
         self.fmin=fmin
-        self.fmax=fmax
+        self.fmax=fmax       
         
         self.n_neighbors = n_neighbors
         self.n_components = n_components
         
-        
+        self.fit_data = None
+        self.UMAP = umap.UMAP(n_neighbors=n_neighbors, n_components=n_components,**kwargs) 
         #   fr_per_sess : integer, optional
         # Number of frames to sample from each dataset. Only used if multiple datasets are indicated in fit_path. 
         # The default is 50000/(n datasets).  
 
-    def fit_mwt(self, df=None, columns=None):
+    def fit(self, fr_per_sess=5000, df=None, columns=None, recompute_mwt=False,
+                                        n_neighbors=None, n_components=None):
         """
-        Loads frames to generate the embedding fit and performs the fit. Stores model as a class field.
+        Loads frames to generate the embedding fit and performs the fit. Stores model as a class field. It assumes that auxiliary files are  created
+        when computing the wavelet transform. If you want to recompute the transform 
 
         Parameters
         ----------
-        df : dataframe,  a path or list of paths
+        df: dataframe,  a path or list of paths
             Df, Path or list of both for the behavioral data to be analyzed. The input format is compatible with DLC output
 
         columns: list of strings
             in case only a subset of the columns need to be used
+        
+        fr_per_sess: int
+            number of frames to be used per session, if less than 0 all frames in all sessions are used
+            
+        recompute_mwt: Boolean
+            if you want to recompute the MWT. You can also erase the  auxiliary xxx_mwt.npy files
 
         Returns
         -------
         Either a matrix, or a list of paths
 
         """
-        if type(df) is list:
-           fit_data = [] 
-           for ddf in df:
-                df_one_mouse = pd.load_cvs(ddf)
+        if (type(df) is not list) or os.path.exists(df[0]):
+            raise Exception('The input must be a list of paths to existing cvs files')
+    
+            
+        for ddf in df:
+             fit_data = []
+             df_one_mouse = pd.load_cvs(ddf)
+             target_path = ddf.split('.')[0]+'_mwt.npy'
+             if os.path.exist(target_path):
+                print('Found file:' + target_path + ", not recomputing wavelet transform")
+                spect_data = np.load(target_path)
+             else:
                 spect_data = self._compute_mwt(df_one_mouse, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
-                np.save(ddf.split('.')[0]+'_mwt.npy')
-            else: 
-                df_data = df
-           
-        else:
-            if type(df) is str:
-                df_data = pd.load_cvs(df)
-            else: 
-                df_data = df
+                np.save(spect_data, target_path) 
+            
+             if (fr_per_sess is None) or (fr_per_sess < 0):
+                fit_data.append(spect_data)
+             else:
+                fit_data.append(spect_data[:-1][::len(spect_data)//fr_per_sess]) # select only fr_per_sess per mouse
+        
+        fit_data = np.array(fit_data)
                 
-            fit_data = self._compute_mwt(df_data, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
-        
-        return fit_data 
-        
-    
-    
-    def fit_umap(data, fr_per_sess=None, n_neighbors=15, n_components=2,**kwargs):
-        
-        """
-        Loads mwt data to generate the embedding fit. Stores model as a class field.
-
-        Parameters
-        ----------
-        data : npy array or list of paths
-            Df, Path or list of both for the spectrographic data to be analyzed. The input format is compatible with DLC output
-
-      
-
-        Returns
-        -------
-        Either a matrix, or a list of paths
-
-        """
-        
-        #initialize umap object
-        self.UMAP = umap.UMAP(,n_neighbors=15, n_components=2,**kwargs)  
-        
-        if type(data) is list: # if input is a list of pahs load each of them separately
-            if fr_per_sess is None:
-                fr_per_sess = np.round(50000/len(data))
-                
-            fit_data = []
-            for dd in data:
-                if os.path.exists(dd.split('.')[0]+'_mwt.npy'):                    
-                    spect_data = np.load(dd.split('.')[0]+'_mwt.npy') # load precomputed spectrogrpahic data
-                    fit_data.append(spect_data[:-1][::len(spect_data)//fr_per_sess]) # slect only fr_per_sess per mouse
-                else:
-                    raise Exception('File:' + dd.split('.')[0]+'_mwt.npy' + 'does not exist, please run fit_mtw() before')  
-            fit_data = np.array(fit_data)
-        else:
-            fit_data=data
+        self.UMAP.fit(fit_data)
+              
             
-        self.um_model = self.UMAP.fit(fit_data)
-        
-        
-            
-        
-        # #if subset of datasets are not specified for fitting then use all the available datasets
-        # if fit_path is None:
-        #     fit_path = self.mwt_paths
-        
-        # #single mouse fit
-        # if len(fit_path) == 1 | isinstance(fit_path, str):
-            
-        #     #load the dataset
-        #     if len(fit_path) == 1:
-        #         fit_data = self.load_spect_data(fit_path[0])
-        #     elif isinstance(fit_path, str):
-        #         fit_data = self.load_spect_data(fit_path)
-            
-        #     #perform umap
-        #     um_model = self.UMAP.fit(fit_data)
-            
-        #     #store the model
-        #     self.model_ = um_model
-            
-        # else: #multi-mouse fit
-        
-        #     #determine number of frames to take from each session
-        #     if fr_per_sess == None:
-        #         fr_per_sess = np.round(50000/len(fit_path))
-            
-        #     #collect samples from each experiment to be used for a multi-mouse fitting
-        #     for this_path in fit_path:
-                
-        #         spect_data = self.load_spect_data(this_path)
-                
-        #         #select the frames to sample
-        #         n_frames = len(spect_data)
-        #         samp_frames = np.round(np.linspace(0, n_frames, num=fr_per_sess, endpoint=False))
-        #         samp_frames = list(samp_frames.astype(int))
-        
-        #         #collect sample frames from each mouse
-        #         if this_path == fit_path[0]:
-        #             multi_samp = spect_data[samp_frames,:]
-        #         else:
-        #             multi_samp = np.concatenate((multi_samp, spect_data[samp_frames,:]))
-                    
-        #         del spect_data
-    
-        #     #perform umap embedding
-        #     um_model = self.UMAP.fit(multi_samp)
-            
-    def transform(self, transform_path=None):
+    def transform(self, df=None):
         """
         Uses the embedding model generated by self.fit to transform the datasets  indicated. 
 
@@ -194,43 +121,23 @@ class UMouse:
         None.
 
         """
-        #if subset of datasets are not specified to transform then transform all the available datasets
-        if transform_path is None:
-            transform_path = self.pathnames
+        if (type(df) is not list) or os.path.exists(df[0]):
+            raise Exception('The input must be a list of paths to existing cvs files')
             
-        #single mouse transform
-        if len(transform_path) == 1 | isinstance(transform_path, str):
-            
-            #load the dataset
-            if len(transform_path) == 1:
-                spect_data = self.load_spect_data(transform_path[0])
-            elif isinstance(fit_path, str):
-                spect_data = self.load_spect_data(transform_path)
-            
-            #transform the new dataset
-            this_embedding = self.UMAP.transform(spect_data)
-            
-            #save the new embedding
-            np.savetxt(self.output_dir + self.filenames + '_embedding.csv', this_embedding, delimiter=",")
-            
-        else:  
-            #multi-mouse transform
-            for this_path in transform_path:
-                
-                #load spectrographic data
-                spect_data = self.load_spect_data(this_path)
-        
-                #transform this dataset and save the embedding
-                this_embedding = self.UMAP.transform(spect_data)
-                
-                #save the new embedding
-                this_filename =  os.path.basename(this_path)
-                
-                np.savetxt(self.output_dir + this_filename + '_embedding.csv', 
-                           this_embedding,
-                           delimiter=",")
-                    
-                del spect_data
+        for ddf in df:
+            target_path = ddf.split('.')[0]+'_mwt.npy'
+            target_path_csv = ddf.split('.')[0]+'_umap.csv'
+            if os.path.exist(target_path):
+               print('Found file:' + target_path + ", not recomputing wavelet transform")
+               spect_data = np.load(target_path)
+               #transform the new dataset
+               this_embedding = self.UMAP.transform(spect_data)
+               this_embedding = pd.Dataframe(this_embedding, columns=['dim_' + i for i in range(this_embedding.shape[1])])
+               #save the new embedding
+               ddf.join(this_embedding)
+               ddf.to_csv(target_path_csv, this_embedding)
+            else:
+               raise Exception('File '+target_path+' not found,' + "Be sure you run the fit method first")
     
         
         
