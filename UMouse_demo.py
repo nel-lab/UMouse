@@ -3,44 +3,37 @@
 
 # In[1]:
 
-from umouse.UMouseLoader import UMouseLoader
+import os
+os.chdir('C:/Users/Jake/Documents/PythonRepos/UMouse/')
+
+from umouse.utils import WagnerLoader
 from umouse.UMouseEstimator import UMouseEstimator
-from umouse.UMousePlotter import UMousePlotter
+# from umouse.UMousePlotter import UMousePlotter
+
+os.chdir('D:/data/BehaviorData/RW_data/201218_000/')
+
 #%%
 
+expt_pathname = 'D:/data/BehaviorData/RW_data/201218_000/trackingData_201218_000.mat'
+output_dir = 'D:/data/BehaviorData/RW_data/UMouse_output/201218_000_behavior_df'
 
-expt_pathname = '/Users/andreagiovannucci/NEL-LAB Dropbox/NEL/Datasets/Jake/raw_data/WarrenWheelDatasets/trackingData_201218_000.mat'
-output_dir = '/Users/andreagiovannucci/NEL-LAB Dropbox/NEL/Datasets/Jake/raw_data/WarrenWheelDatasets/'
-
-# # UMouseLoader 
 # Load and preprocess the data
-#% initiate the class and pass it the paths for the data and output directory
-um_load = UMouseLoader(expt_pathname, output_dir=output_dir)
-#remove pathname definition from initilization and add to loader
+um_load = WagnerLoader(expt_pathname, output_path=output_dir)
+
+
 
 # %%
-#load the data, perform morlet wavelet transform, and label task events
-#behavior_df, freqs, power, mwt_df, bx_labels = um_load.load_mwt_label(expt_pathname)
-behavior_df = um_load.load_data(expt_pathname)
+expt_pathname = 'D:/data/BehaviorData/RW_data/201218_000/201218_000_behavior_df'
 
-#%%
-freqs, power, mwt_array = um_load.mwt(behavior_df, bodyAngle=True, jawAngle=True)
-#%%
-print(freqs.shape)
-print(power.shape)
-print(mwt_array.shape)
-#%%
-bx_labels = um_load.label_behavior(behavior_df)
-#%%
-#save the variables to a dictionary in the output_dir
-um_load.save_outputs(behavior_df, freqs, power, mwt_array, bx_labels)
+
 #%%
 #initialize the estimator object
-mwt_path = ['D:/data/BehaviorData/RW_data/UMouse_output/trackingData_201218_000_mwt_array.csv']
-um_estimate = UMouseEstimator(mwt_path, output_dir)
+um_estimate = UMouse(f_sample, n_frequencies=25, fmin=1, fmax=None)
+
+
 #%%
 
-
+mwt_path = ['D:/data/BehaviorData/RW_data/UMouse_output/trackingData_201218_000_mwt_array.csv']
 
 
 

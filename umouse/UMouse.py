@@ -11,7 +11,7 @@ from behavelet import wavelet_transform
 import umap
 
 class UMouse:
-    def __init__(self, n_frequencies=25, f_sample=70, fmin=1, fmax=None): 
+    def __init__(self, f_sample, n_frequencies=25, fmin=1, fmax=None): 
         """
         
         Parameters
@@ -56,7 +56,7 @@ class UMouse:
 
     def fit_mwt(self, df=None, columns=None):
         """
-        Loads frames to generate the embedding fit and performs the fit. Stores model as a class field.
+        Loads frames to generate the embedding fit and performs the fit. 
 
         Parameters
         ----------
@@ -72,30 +72,42 @@ class UMouse:
 
         """
         if type(df) is list:
-           fit_data = [] 
-           for ddf in df:
-                df_one_mouse = pd.load_cvs(ddf)
-                spect_data = self._compute_mwt(df_one_mouse, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
-                np.save(ddf.split('.')[0]+'_mwt.npy')
-            else: 
-                df_data = df
-           
-        else:
-            if type(df) is str:
-                df_data = pd.load_cvs(df)
-            else: 
-                df_data = df
+            spect_paths = []
+            for ddf in df:
+                df_data = pd.read_csv(ddf)
                 
-            fit_data = self._compute_mwt(df_data, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
+                if columns:
+                    df_data = df_data[[columns]]
+                        
+                spect_data = self._compute_mwt(df_data, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
+                
+                output_path = ddf.split('.')[0]+'_mwt.npy'
+                spect_paths.append(output_path)
+                
+                np.save(output_path, spect_data)
+                
+                return spect_paths
+            
+        else: 
+            elif type(df) is str:
+                df_data = pd.load_cvs(df)
+            elif if isinstance(df_data, pd.DataFrame): 
+                df_data = df
+            else:
+                return print('Warning: input must be a path, list of paths, or dataFrame')
+            
+            if 'columns' in locals():
+                    df_data = df_data[[columns]]
+            spect_data = self._compute_mwt(df_data, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
         
-        return fit_data 
+            return spect_data 
         
     
     
     def fit_umap(data, fr_per_sess=None, n_neighbors=15, n_components=2,**kwargs):
         
         """
-        Loads mwt data to generate the embedding fit. Stores model as a class field.
+        Loads mwt data to generate the umap embedding fit. Stores model as a class field.
 
         Parameters
         ----------
