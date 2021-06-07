@@ -4,21 +4,27 @@
 # In[1]:
 
 import os
-os.chdir('C:/Users/Jake/Documents/PythonRepos/UMouse/')
+#os.chdir([Umouse repo path])
 
 from umouse.utils import WagnerLoader
-from umouse.UMouseEstimator import UMouseEstimator
+from umouse import UMouse
 # from umouse.UMousePlotter import UMousePlotter
 
-os.chdir('D:/data/BehaviorData/RW_data/201218_000/')
+#os.chdir([data path])
 
-#%%
+#%%  #Load and preprocess example data from Richard Warren's open source treadmill setup 
 
-expt_pathname = 'D:/data/BehaviorData/RW_data/201218_000/trackingData_201218_000.mat'
-output_dir = 'D:/data/BehaviorData/RW_data/UMouse_output/201218_000_behavior_df'
+file_list = ['201229_000',
+             '201230_000'
+    ]
+# '201115_000', '201217_000','201218_000', '201226_000', '201227_000',
 
-# Load and preprocess the data
-um_load = WagnerLoader(expt_pathname, output_path=output_dir)
+for filename in file_list:
+    expt_pathname = 'trackingData_' + filename +'.mat'
+    output_dir = 'UMouseOutput/' + filename + '_behavior_df'
+    
+    # Load and preprocess the data
+    um_load = WagnerLoader(expt_pathname, output_path=output_dir)  # 
 
 
 
@@ -28,7 +34,10 @@ expt_pathname = 'D:/data/BehaviorData/RW_data/201218_000/201218_000_behavior_df'
 
 #%%
 #initialize the estimator object
-um_estimate = UMouse(f_sample, n_frequencies=25, fmin=1, fmax=None)
+um_estimate = UMouse(f_sample=250, n_frequencies=25, fmin=1, fmax=None)
+
+spect_output = um_estimate.fit_mwt()
+
 
 
 #%%

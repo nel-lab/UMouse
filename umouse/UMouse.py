@@ -54,7 +54,7 @@ class UMouse:
         # Number of frames to sample from each dataset. Only used if multiple datasets are indicated in fit_path. 
         # The default is 50000/(n datasets).  
 
-    def fit_mwt(self, df=None, columns=None):
+    def fit_mwt(self, df, columns=None):
         """
         Loads frames to generate the embedding fit and performs the fit. 
 
@@ -64,7 +64,7 @@ class UMouse:
             Df, Path or list of both for the behavioral data to be analyzed. The input format is compatible with DLC output
 
         columns: list of strings
-            in case only a subset of the columns need to be used
+            Optional. In case only a subset of the columns need to be used
 
         Returns
         -------
@@ -89,9 +89,9 @@ class UMouse:
                 return spect_paths
             
         else: 
-            elif type(df) is str:
+            if type(df) is str:
                 df_data = pd.load_cvs(df)
-            elif if isinstance(df_data, pd.DataFrame): 
+            elif isinstance(df_data, pd.DataFrame): 
                 df_data = df
             else:
                 return print('Warning: input must be a path, list of paths, or dataFrame')
@@ -104,7 +104,7 @@ class UMouse:
         
     
     
-    def fit_umap(data, fr_per_sess=None, n_neighbors=15, n_components=2,**kwargs):
+    def fit_umap(data, fr_per_sess=None, **kwargs):
         
         """
         Loads mwt data to generate the umap embedding fit. Stores model as a class field.
@@ -114,7 +114,8 @@ class UMouse:
         data : npy array or list of paths
             Df, Path or list of both for the spectrographic data to be analyzed. The input format is compatible with DLC output
 
-      
+        **kwargs : dictionary
+        keyword arguments for umap hyperparameters. See umap-learn.readthedocs.io
 
         Returns
         -------
@@ -123,7 +124,7 @@ class UMouse:
         """
         
         #initialize umap object
-        self.UMAP = umap.UMAP(,n_neighbors=15, n_components=2,**kwargs)  
+        self.UMAP = umap.UMAP(**kwargs)  
         
         if type(data) is list: # if input is a list of pahs load each of them separately
             if fr_per_sess is None:
