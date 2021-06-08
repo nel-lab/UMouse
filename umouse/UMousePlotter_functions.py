@@ -6,10 +6,10 @@ Created on Thu Jun  3 11:02:23 2021
 @author: jimmytabet
 """
 
+imoprt os, cv2, h5py, string
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import string
 
 #%% plot embedding with behavior labels
 def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, title='UMAP embeded points by behavior label'):
@@ -126,92 +126,8 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=Fal
     
     return fig, ax
 
-#%% get traces from reference points - for interactive plotting function
-def traces_from_points(behavior_dfs, behavior_variable, spread, pts):
-    # concat all dfs
-    behavior_dfs_all = pd.concat(behavior_dfs, keys = [num for num in range(len(behavior_dfs))])
-    
-    # get multi-index for selceted points: data set number and frame number
-    indices = behavior_dfs_all.iloc[pts].index
-    
-    # loop through each selected point
-    trace_data = []
-    for pt_num, (df_num, frame) in enumerate(indices):
-        # select appropriate data set
-        df = behavior_dfs[df_num]
-                
-        # shift frame if near edge of data
-        # if frame-spread<0:
-        #     frame = spread
-        #     print(f'selected frame (pt {pt_num+1}) close to edge, shifting to accommodate spread')
-        # elif frame+spread>len(df)-1:
-        #     frame = len(df)-1-spread
-        #     print(f'selected frame (pt {pt_num+1}) close to edge, shifting to accommodate spread')
-        # else:
-        #     pass
-        # trace = df.loc[frame-spread:frame+spread, behavior_variable]
-        
-        trace = df.loc[frame-spread:frame+spread, behavior_variable]
-
-        # add empty points if frame is near edge of data
-        # frame near beginning
-        if frame-spread<0:
-            append = np.array([np.nan]*abs(frame-spread)*len(behavior_variable))
-            append = append.reshape(-1, len(behavior_variable))
-            append = pd.DataFrame(append, columns = behavior_variable,
-                                  index = range(-len(append),0))
-            
-            trace = pd.concat([append, trace])
-        
-        # frame near end
-        if frame+spread>len(df)-1:
-            append = np.array([np.nan]*abs(frame+spread-(len(df)-1))*len(behavior_variable))
-            append = append.reshape(-1, len(behavior_variable))
-            append = pd.DataFrame(append, columns = behavior_variable,
-                                  index = range(trace.index.max()+1,
-                                                trace.index.max()+1 + len(append)))
-            
-            trace = pd.concat([trace, append])
-        
-        # store data (data set number, frames, traces) in traces variable
-        pt_dict = {'df_num': df_num+1,
-                   'frame': frame,
-                   'trace': trace}
-        trace_data.append(pt_dict)
-                    
-    return trace_data
-
-#%% set axes function
-def set_axes(figure, num_clusters, num_points, show_y = False):
-    subplots = figure.get_axes()
-    # iterate over each cluster
-    for i in range(num_clusters):
-        temp_subplots = subplots[i*num_points:i*num_points+num_points]
-        # initialize min/max_ylim
-        min_ylim, max_ylim = np.inf, -np.inf
-
-        # iterate over each point in each cluster
-        for j in temp_subplots:
-            # find min/max_ylim
-            temp_min_ylim, temp_max_ylim = j.get_ylim()
-            min_ylim = min(min_ylim, temp_min_ylim)
-            max_ylim = max(max_ylim, temp_max_ylim)
-        
-        # set constant ylim for each cluster
-        [ax.set_ylim([min_ylim, max_ylim]) for ax in temp_subplots]
-        # "sharey" (hide yaxis for all but first point)
-        [ax.yaxis.set_visible(False) for ax in temp_subplots[1:]]
-    
-    # set yticks (as min/max) for each point
-    [ax.set_yticks(ax.get_ylim()) for ax in subplots]
-    
-    if not show_y:
-        # remove yticks
-        [ax.set_yticks([]) for ax in subplots]
-
-#%% plot interactive traces
-def plot_interactive_traces(n, k, UMAP_dfs, behavior_dfs, behavior_variable, spread,
-                            behavior_labels = [], behavior_legend = [], sep_data=False, show_y=False):
+#%% get points from UMAP embedding
+def get_points_interactive(n, k, UMAP_dfs, behavior_labels = [], behavior_legend = [], sep_data=False):
     '''
 
     Parameters
@@ -232,9 +148,6 @@ def plot_interactive_traces(n, k, UMAP_dfs, behavior_dfs, behavior_variable, spr
     # convert dfs to list
     if not isinstance(UMAP_dfs, list):
         UMAP_dfs = [UMAP_dfs]
-        
-    if not isinstance(behavior_dfs, list):
-        behavior_dfs = [behavior_dfs]
     
     # raise error if using 3D embedding
     if all('dim3' in i for i in [df.columns.tolist() for df in UMAP_dfs]):
@@ -286,11 +199,92 @@ def plot_interactive_traces(n, k, UMAP_dfs, behavior_dfs, behavior_variable, spr
     selected_pts = np.array(selected_pts).reshape(-1,2)
     selected_frames = [int(np.where((UMAP_dfs_all == pt).all(axis=1))[0]) for pt in selected_pts]
     
-    selected_frames = np.array(selected_frames)#.reshape(n,k)
+    selected_frames = np.array(selected_frames)
+    
+    return selected_frames
 
+#%% set axes function for plot_interactive_traces
+def set_axes(figure, num_clusters, num_points, show_y = False):
+    subplots = figure.get_axes()
+    # iterate over each cluster
+    for i in range(num_clusters):
+        temp_subplots = subplots[i*num_points:i*num_points+num_points]
+        # initialize min/max_ylim
+        min_ylim, max_ylim = np.inf, -np.inf
+
+        # iterate over each point in each cluster
+        for j in temp_subplots:
+            # find min/max_ylim
+            temp_min_ylim, temp_max_ylim = j.get_ylim()
+            min_ylim = min(min_ylim, temp_min_ylim)
+            max_ylim = max(max_ylim, temp_max_ylim)
+        
+        # set constant ylim for each cluster
+        [ax.set_ylim([min_ylim, max_ylim]) for ax in temp_subplots]
+        # "sharey" (hide yaxis for all but first point)
+        [ax.yaxis.set_visible(False) for ax in temp_subplots[1:]]
+    
+    # set yticks (as min/max) for each point
+    [ax.set_yticks(ax.get_ylim()) for ax in subplots]
+    
+    if not show_y:
+        # remove yticks
+        [ax.set_yticks([]) for ax in subplots]
+
+#%% plot interactive traces
+def interactive_plot_traces(n, k, UMAP_dfs, behavior_dfs, behavior_variable, spread,
+                            behavior_labels = [], behavior_legend = [], sep_data=False, show_y=False):
+
+    # convert dfs to list
+    if not isinstance(behavior_dfs, list):
+        behavior_dfs = [behavior_dfs]
+    
+    # get interactive points from UMAP embedding
+    selected_frames = get_points_interactive(n, k, UMAP_dfs, behavior_labels, behavior_legend, sep_data)
+    
     # collect traces info from selected frames
-    trace_data = traces_from_points(behavior_dfs, behavior_variable, spread, selected_frames)
 
+    # concat all behavior dfs
+    behavior_dfs_all = pd.concat(behavior_dfs, keys = [num for num in range(len(behavior_dfs))])
+    
+    # get multi-index for selceted points: data set number and frame number
+    indices = behavior_dfs_all.iloc[selected_frames].index
+    
+    # loop through each selected point
+    trace_data = []
+    for pt_num, (df_num, frame) in enumerate(indices):
+        # select appropriate data set
+        df = behavior_dfs[df_num]
+        
+        trace = df.loc[frame-spread:frame+spread, behavior_variable]
+
+        # add empty points if frame is near edge of data
+        # frame near beginning
+        if frame-spread<0:
+            append = np.array([np.nan]*abs(frame-spread)*len(behavior_variable))
+            append = append.reshape(-1, len(behavior_variable))
+            append = pd.DataFrame(append, columns = behavior_variable,
+                                  index = range(-len(append),0))
+            
+            trace = pd.concat([append, trace])
+        
+        # frame near end
+        if frame+spread>len(df)-1:
+            append = np.array([np.nan]*abs(frame+spread-(len(df)-1))*len(behavior_variable))
+            append = append.reshape(-1, len(behavior_variable))
+            append = pd.DataFrame(append, columns = behavior_variable,
+                                  index = range(trace.index.max()+1,
+                                                trace.index.max()+1 + len(append)))
+            
+            trace = pd.concat([trace, append])
+        
+        # store data (data set number, frames, traces) in traces variable
+        pt_dict = {'df_num': df_num+1,
+                   'frame': frame,
+                   'trace': trace}
+        
+        trace_data.append(pt_dict)
+    
     # plot traces in new figure
     fig2 = plt.figure()
     fig2.set_tight_layout(True)
@@ -323,6 +317,73 @@ def plot_interactive_traces(n, k, UMAP_dfs, behavior_dfs, behavior_variable, spr
     
     # return trace_data, selected_frames
 
+#%%
+def interactive_behavior_montage(n, k, UMAP_dfs, spread, video_path, save_path,
+                                 fps = 70, behavior_labels = [], behavior_legend = [], sep_data=False):
+    
+    '''
+
+    Parameters
+    ----------
+    video_path : str
+        Path to behavior video. Must be hdf5.
+    save_path : str
+        Path to save behavior montage. Must include extension/format (.avi, .mp4, .mov).
+    indices : numpy array
+        Array of selected frame incides.
+    spread : int
+        Number of frames to show on either side of indexed frame.
+    fps : int, optional
+        Frame rate of the behavior video. The default is 70.
+
+    Returns
+    -------
+    None. Saves behavior montage to save_path.
+
+    '''
+    
+    # raise error if save_path does not include extension
+    if len(os.path.splitext(save_path)[-1]) == 0:
+        raise ValueError('Specify format/extension for save_path')
+    
+    # get interactive points from UMAP embedding
+    indices = get_points_interactive(n, k, UMAP_dfs, behavior_labels, behavior_legend, sep_data)
+    
+    # get sorted indices (needed for h5py indexing)
+    indices_sorted = np.sort(indices)
+    
+    # reset indices from sorted
+    reset_indices = indices_sorted.searchsorted(indices)
+    
+    # init big movie
+    big_mov = []
+    
+    # open hdf5 movie
+    with h5py.File(video_path, 'r') as hf:
+        # get key (assuming first key)
+        key = [key for key in hf][0]
+
+        # save montage of points for each frame
+        for i in range(2*spread+1):
+            # index using sorted indices
+            frames_sorted = hf[key][indices_sorted-spread+i]
+            # use original frame order using reset indices
+            frames = frames_sorted[reset_indices]
+            big_frame  = montage(frames, grid_shape=(n,k))
+            big_mov.append(big_frame)
+    
+    # init montage video
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    video = cv2.VideoWriter(save_path, fourcc, fps, big_frame.shape[::-1])
+    
+    # save each frame (3 channels needed) to montage
+    for frame in big_mov:
+        video.write(cv2.merge([frame]*3))
+     
+    video.release()
+    
+    print(f'behavior montage saved to {save_path}')
+
 #%% random test example
 a = np.random.rand(10,3)
 b = np.random.rand(10,3)
@@ -335,16 +396,12 @@ c_df = pd.DataFrame(c, columns = ['dim1','dim2','dim9'])
 UMAP_dfs = [a_df, b_df, c_df]
 
 UMAP_dfs_all = pd.concat(UMAP_dfs)
-
 behavior_labels = np.random.randint(0,4,len(UMAP_dfs_all))
-
 behavior_legend = [f'beh_{num}' for num in range(max(np.unique(behavior_labels))+1)]
-
 UMAP_dfs_all['label']=behavior_labels
 
 # plot_embedding(UMAP_dfs, behavior_labels, behavior_legend)
-
-trace, pts = plot_interactive_traces(2, 4, UMAP_dfs, UMAP_dfs, ['dim9','dim2'], 3, behavior_labels, behavior_legend)
+interactive_plot_traces(3, 5, UMAP_dfs, UMAP_dfs, ['dim9','dim2'], 3, behavior_labels, behavior_legend)
 
 print(UMAP_dfs_all.iloc[pts.flatten()])
 
@@ -352,10 +409,19 @@ print(UMAP_dfs_all.iloc[pts.flatten()])
 UMAP_dfs = pd.read_csv('/Users/jimmytabet/Desktop/plotting_UMouse demo/nmf.csv')
 behavior_dfs = pd.read_csv('/Users/jimmytabet/Desktop/plotting_UMouse demo/behavior.csv')
 behavior_variable = ['Lpaw_Y', 'Rpaw_Y']
+n = 3
+k = 5
+spread=70
+montage_shape = (n,k)
+fps = 70
+video_path = '/Users/jimmytabet/NEL/Projects/BH3D/mov.h5'
+save_path = '/Users/jimmytabet/Desktop/test.avi'
 
-# out = plot_interactive_traces(5, UMAP_dfs, behavior_dfs, behavior_variable, 70)
+# out = interactive_plot_traces(5, UMAP_dfs, behavior_dfs, behavior_variable, 70)
 
-plot_interactive_traces(3, 5, UMAP_dfs, behavior_dfs, behavior_variable, spread=70,
-                            behavior_labels = [], behavior_legend = [], sep_data=True, show_y=False)
+# interactive_plot_traces(n, k, UMAP_dfs, behavior_dfs, behavior_variable, spread=70,
+                            # behavior_labels = [], behavior_legend = [], sep_data=True, show_y=False)
 
 # plot_embedding(UMAP_dfs)
+
+interactive_behavior_montage(n, k, UMAP_dfs, spread, video_path, save_path, fps = 70, sep_data=True)
