@@ -31,7 +31,7 @@ def load_dfs(dfs):
     return dfs_all
 
 #%% plot embedding with behavior labels
-def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, title='UMAP embeded points by behavior label'):
+def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, save=False):
     # load dfs    
     dfs = load_dfs(dfs)
     
@@ -41,7 +41,7 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, title=
     if all('dim3' in i for i in [df.columns.tolist() for df in dfs]):   
         dfs = pd.concat(dfs)
 
-        ax = fig.add_subplot(projection='3d', title=title,
+        ax = fig.add_subplot(projection='3d', title='UMAP embeded points by behavior label',
                              xlabel='dimension 1', ylabel = 'dimension 2', zlabel = 'dimension 3')
         
         for lab in np.unique(behavior_labels):
@@ -53,7 +53,7 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, title=
     else:
         dfs = pd.concat(dfs)
 
-        ax = fig.add_subplot(title=title, xlabel='dimension 1', ylabel = 'dimension 2')
+        ax = fig.add_subplot(title='UMAP embeded points by behavior label', xlabel='dimension 1', ylabel = 'dimension 2')
         
         for lab in np.unique(behavior_labels):
             df = dfs[behavior_labels == lab]
@@ -62,11 +62,17 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, title=
     
     fig.legend()
     
+    if isinstance(save, str):
+        plt.savefig(save)
+    elif save:
+        plt.savefig('UMAP_embedding_behavior_labels')
+    else:
+        pass
+    
     return fig, ax
 
-
 #%% plot UMAP embedding
-def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=False, title='UMAP embeded points'):
+def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=False, save=False):
     '''
 
     Parameters
@@ -75,8 +81,6 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=Fal
         Data to be plotted.
     sep_data : bool, optional
         Display each dataset in different color. The default is False.
-    title : str, optional
-        Title of UMAP plot. The default is 'UMAP embeded points'.
 
     Returns
     -------
@@ -94,7 +98,7 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=Fal
             raise ValueError('Provide behavior legend assoicated with behavior labels')
         
         # plot embedding with behavior labels
-        fig, ax = plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, title=title)
+        fig, ax = plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, save=save)
         return fig, ax
     
     # load dfs    
@@ -110,7 +114,7 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=Fal
             
     # plot 3D
     if all('dim3' in i for i in [df.columns.tolist() for df in dfs]):    
-        ax = fig.add_subplot(projection='3d', title=title,
+        ax = fig.add_subplot(projection='3d', title='UMAP embeded points',
                              xlabel='dimension 1', ylabel = 'dimension 2', zlabel = 'dimension 3')
         for num, df in enumerate(dfs):
             # seperate data labels
@@ -124,7 +128,7 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=Fal
    
     # plot 2D
     else:
-        ax = fig.add_subplot(title=title, xlabel='dimension 1', ylabel = 'dimension 2')
+        ax = fig.add_subplot(title='UMAP embeded points', xlabel='dimension 1', ylabel = 'dimension 2')
         for num, df in enumerate(dfs):
             # seperate data labels
             if sep_data:
@@ -138,6 +142,13 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=Fal
     # show legend if seperate data sets
     if sep_data:
         fig.legend()
+        
+    if isinstance(save, str):
+        plt.savefig(save)
+    elif save:
+        plt.savefig('UMAP_embedding')
+    else:
+        pass
     
     return fig, ax
 
@@ -184,7 +195,7 @@ class interactive():
         self.behavior_legend = behavior_legend
         
     # get points from UMAP embedding
-    def get_points(self, sep_data=False):
+    def get_points(self, sep_data=False, save_embedding=False, save_chosen_points=False):
         '''
     
         Parameters
@@ -205,6 +216,7 @@ class interactive():
         # set function variable to class variables
         n = self.n
         k = self.k
+        spread = self.spread
         UMAP_dfs = self.UMAP_dfs
         behavior_labels = self.behavior_labels
         behavior_legend = self.behavior_legend
@@ -227,7 +239,10 @@ class interactive():
         # plot embedding (optionally with behavior labels)      
         fig, ax = plot_embedding(UMAP_dfs, behavior_labels = behavior_labels,
                                  behavior_legend = behavior_legend, sep_data=sep_data,
-                                 title=f'UMAP embeded points\nCHOOSE {n} POINTS')
+                                 save = save_embedding)
+
+        # set title to instruct user to choose points        
+        ax.set_title(f'UMAP embeded points\nCHOOSE {n} POINTS')
         
         # interactively select points to show traces
         selected_pts_all = []
@@ -321,10 +336,17 @@ class interactive():
         
         self.selected_frames = selected_frames
         
+        if isinstance(save_chosen_points, str):
+            plt.savefig(save_chosen_points)
+        elif save_chosen_points:
+            plt.savefig('UMAP_embedding_with_chosen_points')
+        else:
+            pass
+        
         return selected_frames
     
     # plot traces
-    def plot_traces(self, behavior_dfs, behavior_variable, selected_frames = [], show_y=False):
+    def plot_traces(self, behavior_dfs, behavior_variable, selected_frames = [], show_y=False, save=False):
     
         # get interactive points from UMAP embedding
         if not len(selected_frames):
@@ -333,7 +355,9 @@ class interactive():
 
             selected_frames = self.selected_frames
         
-        # set spread variable
+        # set function variable to class variables
+        n = self.n
+        k = self.k
         spread = self.spread
         
         # load dfs    
@@ -411,6 +435,13 @@ class interactive():
         set_axes(fig2, n, k, show_y=show_y)
         
         fig2.legend(behavior_variable)
+        
+        if isinstance(save, str):
+            plt.savefig(save)
+        elif save:
+            plt.savefig('traces_of_chosen_points')
+        else:
+            pass
         
     # behavior montage
     def behavior_montage(self, video_path, save_path, fps, indices = []):
@@ -515,40 +546,3 @@ class interactive():
         
         # # Closes all the frames
         # cv2.destroyAllWindows()
-
-#%% random test example
-a = np.random.rand(10,3)
-b = np.random.rand(10,3)
-c = np.random.rand(10,3)
-a_df = pd.DataFrame(a, columns = ['dim1','dim2','dim9'])
-b_df = pd.DataFrame(b, columns = ['dim1','dim2','dim9'])
-c_df = pd.DataFrame(c, columns = ['dim1','dim2','dim9'])
-
-# UMAP_dfs = [a_df]
-UMAP_dfs = [a_df, b_df, c_df]
-
-UMAP_dfs_all = pd.concat(UMAP_dfs)
-behavior_labels = np.random.randint(0,4,len(UMAP_dfs_all))
-behavior_legend = [f'beh_{num}' for num in range(max(np.unique(behavior_labels))+1)]
-UMAP_dfs_all['label']=behavior_labels
-
-# plot_embedding(UMAP_dfs, behavior_labels, behavior_legend)
-# interactive_plot_traces(3, 5, UMAP_dfs, UMAP_dfs, ['dim9','dim2'], 3, behavior_labels, behavior_legend)
-
-# print(UMAP_dfs_all.iloc[pts.flatten()])
-
-#%%
-UMAP_dfs = pd.read_csv('/Users/jimmytabet/Desktop/plotting_UMouse demo/nmf.csv')
-behavior_dfs = '/Users/jimmytabet/Desktop/plotting_UMouse demo/behavior.csv'
-behavior_variable = ['Lpaw_Y', 'Rpaw_Y']
-n = 3
-k = 5
-spread=70
-fps = 70
-video_path = '/Users/jimmytabet/NEL/Projects/BH3D/mov.h5'
-save_path = '/Users/jimmytabet/Desktop/test.avi'
-
-inter = interactive(n,k,spread,UMAP_dfs)
-inter.get_points(sep_data=True)
-inter.plot_traces(behavior_dfs, behavior_variable)
-inter.behavior_montage(video_path, save_path, fps)
