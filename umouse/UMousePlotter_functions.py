@@ -169,7 +169,7 @@ def set_axes(figure, num_clusters, num_points, show_y = False):
         # remove yticks
         [ax.set_yticks([]) for ax in subplots]
 
-#%%
+#%% iteractive plotting class
 class interactive():
     def __init__(self, n_clusters, n_points, spread, UMAP_dfs, behavior_labels = [], behavior_legend = []):            
         # load dfs    
@@ -218,12 +218,11 @@ class interactive():
         # only keep dim1/dim2 for plotting
         UMAP_dfs_all = UMAP_dfs_all[['dim1','dim2']]
         
-        # convert to numpy for distance calculations
-        UMAP_dfs_numpy = UMAP_dfs_all.to_numpy()
+        UMAP_dfs_all_og = UMAP_dfs_all.copy()
         
         # raise error if number of points > total number of frames
-        if n>len(UMAP_dfs_numpy):
-            raise ValueError(f'n ({n}) > total points ({len(UMAP_dfs_numpy)}), pick smaller n')
+        if n>len(UMAP_dfs_all):
+            raise ValueError(f'n ({n}) > total points ({len(UMAP_dfs_all)}), pick smaller n')
         
         # plot embedding (optionally with behavior labels)      
         fig, ax = plot_embedding(UMAP_dfs, behavior_labels = behavior_labels,
@@ -231,33 +230,63 @@ class interactive():
                                  title=f'UMAP embeded points\nCHOOSE {n} POINTS')
         
         # interactively select points to show traces
-        selected_pts = []
+        selected_pts_all = []
         for i in range(n):
             # user input
             pt = plt.ginput()
             pt = np.array(pt).squeeze()
             
             # get closest k points to selected point
-            dist = np.linalg.norm(UMAP_dfs_numpy-pt, axis=1)
+            dist = np.linalg.norm(UMAP_dfs_all-pt, axis=1)
             sorted_dist = np.argsort(dist)
-            closest_pt = UMAP_dfs_numpy[sorted_dist[:k]]
+            index = UMAP_dfs_all.iloc[sorted_dist].index
+            
+            # init variables to pick points that are not close or on edge of data
+            idx = 0
+            selected_pts = []
+            idxs = []
+            # loop until k points chosen
+            while len(selected_pts) < k:
+                skip = False
+                df_num, frame = index[idx]
+                end = len(UMAP_dfs[df_num])
+                
+                # check if close to previously selected point
+                if len(idxs):
+                    sel_pt = np.array(idxs)
+                    sel_pt_df = sel_pt[sel_pt[:,0] == df_num]
+                    
+                    check = abs(sel_pt_df[:,1]-frame)<spread
+                    skip = check.any()
+                    
+                # edge cases
+                if frame-spread<0 or frame+spread>end-1:
+                    pass
+                # point close to previously selected point
+                elif skip:
+                    pass
+                # add to list and drop to not duplicate
+                else:
+                    idxs.append(index[idx])
+                    selected_pts.append(UMAP_dfs_all.loc[index[idx]])
+                    UMAP_dfs_all = UMAP_dfs_all.drop(index[idx])
+                    
+                idx += 1
+                
+            selected_pts = np.array(selected_pts)
+            selected_pts_all.append(selected_pts)
             
             # plot k selected points with text label
-            ax.scatter(*closest_pt.T, c = 'k', s=10, marker = '*', label = '_'*i+'selected\npoints')
-            [plt.text(*cl_pt, str(i+1)+string.ascii_letters[j]) for j, cl_pt in enumerate(closest_pt)]
+            ax.scatter(*selected_pts.T, c = 'k', s=10, marker = '*', label = '_'*i+'selected\npoints')
+            [plt.text(*sl_pt, str(i+1)+string.ascii_letters[j]) for j, sl_pt in enumerate(selected_pts)]
             ax.set_title(f'UMAP embeded points\nselected point(s) {i+1} of {n}')
     
             # pause to update plot with selected point
             plt.pause(1e-6)
-    
-            selected_pts.append(closest_pt)
-            
-            # delete selected points so they can be selected again        
-            UMAP_dfs_numpy = np.delete(UMAP_dfs_numpy, sorted_dist[:k], axis=0)        
         
         # get selected data set frame from selected points
-        selected_pts = np.array(selected_pts).reshape(-1,2)
-        selected_frames = [int(np.where((UMAP_dfs_all == pt).all(axis=1))[0]) for pt in selected_pts]
+        selected_pts_all = np.array(selected_pts_all).reshape(-1,2)
+        selected_frames = [int(np.where((UMAP_dfs_all_og == pt).all(axis=1))[0]) for pt in selected_pts_all]
         
         selected_frames = np.array(selected_frames)
         
@@ -486,12 +515,11 @@ behavior_variable = ['Lpaw_Y', 'Rpaw_Y']
 n = 3
 k = 5
 spread=70
-montage_shape = (n,k)
 fps = 70
 video_path = '/Users/jimmytabet/NEL/Projects/BH3D/mov.h5'
 save_path = '/Users/jimmytabet/Desktop/test.avi'
 
 inter = interactive(n,k,spread,UMAP_dfs)
-inter.get_points()
+inter.get_points(sep_data=True)
 inter.plot_traces(behavior_dfs, behavior_variable)
-inter.behavior_montage(video_path, save_path, fps=70)
+inter.behavior_montage(video_path, save_path, fps)
