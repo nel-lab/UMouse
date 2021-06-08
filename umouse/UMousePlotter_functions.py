@@ -214,14 +214,14 @@ class interactive():
             raise ValueError('interactive trace plotting only available for 2D UMAP embeddings')
             
         # concat all UMAP dfs
-        UMAP_dfs_all = pd.concat(UMAP_dfs, keys = [num for num in range(len(UMAP_dfs))])
+        UMAP_dfs_all_og = pd.concat(UMAP_dfs, keys = [num for num in range(len(UMAP_dfs))])
         # only keep dim1/dim2 for plotting
-        UMAP_dfs_all = UMAP_dfs_all[['dim1','dim2']]
+        UMAP_dfs_all_og = UMAP_dfs_all_og[['dim1','dim2']]
         
-        UMAP_dfs_all_og = UMAP_dfs_all.copy()
+        UMAP_dfs_all = UMAP_dfs_all_og.copy()
         
         # raise error if number of points > total number of frames
-        if n>len(UMAP_dfs_all):
+        if (n*k)>len(UMAP_dfs_all):
             raise ValueError(f'n ({n}) > total points ({len(UMAP_dfs_all)}), pick smaller n')
         
         # plot embedding (optionally with behavior labels)      
@@ -245,10 +245,15 @@ class interactive():
             idx = 0
             selected_pts = []
             idxs = []
-            # loop until k points chosen
-            while len(selected_pts) < k:
-                skip = False
-                df_num, frame = index[idx]
+    
+            # iter through all points to find suitable ones
+            for idx in index:
+                # check is there are k points yet
+                if len(selected_pts) == k:
+                    break
+                
+                (df_num, frame) = idx
+                skip=False
                 end = len(UMAP_dfs[df_num])
                 
                 # check if close to previously selected point
@@ -261,19 +266,43 @@ class interactive():
                     
                 # edge cases
                 if frame-spread<0 or frame+spread>end-1:
-                    pass
+                    continue
                 # point close to previously selected point
                 elif skip:
-                    pass
+                    continue
                 # add to list and drop to not duplicate
                 else:
-                    idxs.append(index[idx])
-                    selected_pts.append(UMAP_dfs_all.loc[index[idx]])
-                    UMAP_dfs_all = UMAP_dfs_all.drop(index[idx])
+                    idxs.append(idx)
+                    selected_pts.append(UMAP_dfs_all.loc[idx])
+                    UMAP_dfs_all = UMAP_dfs_all.drop(idx)
+            
+            # do it again without restrictions on proximity to previous points
+            if len(selected_pts) != k:
+        
+                # iter through all points to find suitable ones
+                for idx in index:
+                    if idx in idxs:
+                        continue
+
+                    # check is there are k points yet
+                    if len(selected_pts) == k:
+                        break
                     
-                idx += 1
-                
+                    (df_num, frame) = idx
+                    end = len(UMAP_dfs[df_num])
+                        
+                    # edge cases
+                    if frame-spread<0 or frame+spread>end-1:
+                        continue
+                    # add to list and drop to not duplicate
+                    else:
+                        selected_pts.append(UMAP_dfs_all.loc[idx])
+                        UMAP_dfs_all = UMAP_dfs_all.drop(idx)
+                        
             selected_pts = np.array(selected_pts)
+            if len(selected_pts) != k:
+                raise ValueError('Not enough eligible points. Decrease n_clus, n_points, or shorten spread')
+                
             selected_pts_all.append(selected_pts)
             
             # plot k selected points with text label
