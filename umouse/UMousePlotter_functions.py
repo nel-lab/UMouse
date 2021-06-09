@@ -23,17 +23,25 @@ def load_dfs(dfs):
     for df in dfs:
         if isinstance(df, str):
             dfs_all.append(pd.read_csv(df))
-        elif isinstance(df, pd.DataFrame):
-            dfs_all.append(df)
         else:
-            raise ValueError('unrecognized dataframe format')
+            dfs_all.append(pd.DataFrame(df))
     
     return dfs_all
 
 #%% plot embedding with behavior labels
-def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, save=False):
-    # load dfs    
+def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, save=False):
+    # load dfs and downsample
     dfs = load_dfs(dfs)
+    behavior_labels = load_dfs(behavior_labels)
+
+    # check that UMAP and behavior_labels are same size
+    if not all([len(i) == len(j) for i,j in zip(dfs, behavior_labels)]):
+        raise ValueError('Size of UMAP points and corresponding behavior labels do not match \
+                         (not every frame has a behavior label)')
+    
+    dfs = [df[::ds] for df in dfs]
+    behavior_labels = [df[::ds] for df in behavior_labels]
+    behavior_labels = pd.concat(behavior_labels).to_numpy()
     
     fig = plt.figure()
             
@@ -61,18 +69,18 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, save=F
             ax.scatter(df['dim1'], df['dim2'], label = behavior_legend[lab])
     
     fig.legend()
-    
+        
     if isinstance(save, str):
-        plt.savefig(save)
+        plt.savefig(save, dpi=300)
     elif save:
-        plt.savefig('UMAP_embedding_behavior_labels')
+        plt.savefig('UMAP_embedding_behavior_labels', dpi=300)
     else:
         pass
     
     return fig, ax
 
 #%% plot UMAP embedding
-def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=False, save=False):
+def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], ds=1, sep_data=False, save=False):
     '''
 
     Parameters
@@ -98,11 +106,13 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=Fal
             raise ValueError('Provide behavior legend assoicated with behavior labels')
         
         # plot embedding with behavior labels
-        fig, ax = plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, save=save)
+        fig, ax = plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend,
+                                                 ds=ds, save=save)
         return fig, ax
     
-    # load dfs    
+    # load dfs and downsample
     dfs = load_dfs(dfs)
+    dfs = [df[::ds] for df in dfs]
     
     # change color per data set of leave as one color
     if sep_data:
@@ -144,9 +154,9 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], sep_data=Fal
         fig.legend()
         
     if isinstance(save, str):
-        plt.savefig(save)
+        plt.savefig(save, dpi=300)
     elif save:
-        plt.savefig('UMAP_embedding')
+        plt.savefig('UMAP_embedding', dpi=300)
     else:
         pass
     
@@ -182,17 +192,19 @@ def set_axes(figure, num_clusters, num_points, show_y = False):
 
 #%% iteractive plotting class
 class interactive():
-    def __init__(self, n_clusters, n_points, spread, UMAP_dfs, behavior_labels = [], behavior_legend = []):            
+    def __init__(self, n_clusters, k_points, spread, UMAP_dfs, behavior_labels = [], behavior_legend = [], ds = 1):            
         # load dfs    
         UMAP_dfs = load_dfs(UMAP_dfs)
+        behavior_labels = load_dfs(behavior_labels)
         
         # set class variables
         self.n = n_clusters
-        self.k = n_points
+        self.k = k_points
         self.spread = spread
         self.UMAP_dfs = UMAP_dfs
         self.behavior_labels = behavior_labels
         self.behavior_legend = behavior_legend
+        self.ds = ds
         
     # get points from UMAP embedding
     def get_points(self, sep_data=False, save_embedding=False, save_chosen_points=False):
@@ -220,13 +232,17 @@ class interactive():
         UMAP_dfs = self.UMAP_dfs
         behavior_labels = self.behavior_labels
         behavior_legend = self.behavior_legend
+        ds = self.ds
         
         # raise error if using 3D embedding
         if all('dim3' in i for i in [df.columns.tolist() for df in UMAP_dfs]):
             raise ValueError('interactive trace plotting only available for 2D UMAP embeddings')
+                  
+        # downsample UMAP
+        UMAP_dfs_ds = [df[::ds] for df in UMAP_dfs]
             
         # concat all UMAP dfs
-        UMAP_dfs_all_og = pd.concat(UMAP_dfs, keys = [num for num in range(len(UMAP_dfs))])
+        UMAP_dfs_all_og = pd.concat(UMAP_dfs_ds, keys = [num for num in range(len(UMAP_dfs_ds))])
         # only keep dim1/dim2 for plotting
         UMAP_dfs_all_og = UMAP_dfs_all_og[['dim1','dim2']]
         
@@ -234,12 +250,17 @@ class interactive():
         
         # raise error if number of points > total number of frames
         if (n*k)>len(UMAP_dfs_all):
-            raise ValueError(f'n ({n}) > total points ({len(UMAP_dfs_all)}), pick smaller n')
+            if ds != 1:
+                raise ValueError(f'n_clusters*k_points ({n*k}) > total downsampeled points ({len(UMAP_dfs_all)}).\
+                                 Decrease n_clusters, k_points, or ds')
+            else:
+                raise ValueError(f'n_clusters*k_points ({n*k}) > total points ({len(UMAP_dfs_all)}).\
+                                 Decrease n_clusters or k_points.')
         
         # plot embedding (optionally with behavior labels)      
         fig, ax = plot_embedding(UMAP_dfs, behavior_labels = behavior_labels,
-                                 behavior_legend = behavior_legend, sep_data=sep_data,
-                                 save = save_embedding)
+                                 behavior_legend = behavior_legend, ds=ds,
+                                 sep_data=sep_data, save = save_embedding)
 
         # set title to instruct user to choose points        
         ax.set_title(f'UMAP embeded points\nCHOOSE {n} POINTS')
@@ -257,7 +278,6 @@ class interactive():
             index = UMAP_dfs_all.iloc[sorted_dist].index
             
             # init variables to pick points that are not close or on edge of data
-            idx = 0
             selected_pts = []
             idxs = []
     
@@ -316,10 +336,8 @@ class interactive():
                         
             selected_pts = np.array(selected_pts)
             if len(selected_pts) != k:
-                raise ValueError('Not enough eligible points. Decrease n_clus, n_points, or shorten spread')
-                
-            selected_pts_all.append(selected_pts)
-            
+                raise ValueError('Not enough eligible points. Decrease n_clusters, k_points, or shorten spread')
+                            
             # plot k selected points with text label
             ax.scatter(*selected_pts.T, c = 'k', s=10, marker = '*', label = '_'*i+'selected\npoints')
             [plt.text(*sl_pt, str(i+1)+string.ascii_letters[j]) for j, sl_pt in enumerate(selected_pts)]
@@ -327,19 +345,22 @@ class interactive():
     
             # pause to update plot with selected point
             plt.pause(1e-6)
+            
+            # append to all points list            
+            selected_pts_all.append(selected_pts)
         
         # get selected data set frame from selected points
         selected_pts_all = np.array(selected_pts_all).reshape(-1,2)
         selected_frames = [int(np.where((UMAP_dfs_all_og == pt).all(axis=1))[0]) for pt in selected_pts_all]
         
-        selected_frames = np.array(selected_frames)
+        selected_frames = ds*np.array(selected_frames)
         
         self.selected_frames = selected_frames
         
         if isinstance(save_chosen_points, str):
-            plt.savefig(save_chosen_points)
+            plt.savefig(save_chosen_points, dpi=300)
         elif save_chosen_points:
-            plt.savefig('UMAP_embedding_with_chosen_points')
+            plt.savefig('UMAP_embedding_with_chosen_points', dpi=300)
         else:
             pass
         
@@ -437,9 +458,9 @@ class interactive():
         fig2.legend(behavior_variable)
         
         if isinstance(save, str):
-            plt.savefig(save)
+            plt.savefig(save, dpi=300)
         elif save:
-            plt.savefig('traces_of_chosen_points')
+            plt.savefig('traces_of_chosen_points', dpi=300)
         else:
             pass
         
