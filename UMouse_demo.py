@@ -6,7 +6,7 @@
 import os
 #os.chdir([Umouse repo path])
 
-from umouse.utils import WagnerLoader
+from umouse.utils import WarrenDataProcess
 from umouse import UMouse
 # from umouse.UMousePlotter import UMousePlotter
 
@@ -24,7 +24,7 @@ for filename in file_list:
     output_dir = 'UMouseOutput/' + filename + '_behavior_df'
     
     # Load and preprocess the data
-    um_load = WagnerLoader(expt_pathname, output_path=output_dir)  # 
+    um_load = WarrenDataProcess(expt_pathname, output_path=output_dir)  # 
 
 
 
@@ -36,32 +36,24 @@ expt_pathname = 'D:/data/BehaviorData/RW_data/201218_000/201218_000_behavior_df'
 #initialize the estimator object
 um_estimate = UMouse(f_sample=250, n_frequencies=25, fmin=1, fmax=None)
 
+#%% Run morlet wavelet transform to get spectrographic data
 spect_output = um_estimate.fit_mwt()
 
+#%% use UMAP to get reduced dim embedding of the spectrographic data
+
+um_estimate.fit_umap(data=[])
+
+#%% Transform the data using the existing umap model
+
+um_estimate.transform(transform_path=[])
 
 
-#%%
-
-mwt_path = ['D:/data/BehaviorData/RW_data/UMouse_output/trackingData_201218_000_mwt_array.csv']
 
 
 
-# In[6]:
 
 
-#Perform UMAP embedding on the processed data
-um_estimate.fit() #fit_path = mwt_path
 
-
-# In[7]:
-
-
-um_embedding = um_estimate.transform(transform_path = mwt_path)
-
-
-# # UMousePlotter
-# Plot the UMAP embedding
-# 
 
 # In[ ]:
 
