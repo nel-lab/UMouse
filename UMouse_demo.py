@@ -7,24 +7,22 @@ import os
 #os.chdir([Umouse repo path])
 
 from umouse.utils import WarrenDataProcess
-from umouse import UMouse
+#from umouse import UMouse
 # from umouse.UMousePlotter import UMousePlotter
 
 #os.chdir([data path])
 
 #%%  #Load and preprocess example data from Richard Warren's open source treadmill setup 
 
-file_list = ['201229_000',
-             '201230_000'
-    ]
-# '201115_000', '201217_000','201218_000', '201226_000', '201227_000',
+file_list = ['201229_000']
+# '201230_000', '201115_000', '201217_000','201218_000', '201226_000', '201227_000',
 
 for filename in file_list:
     expt_pathname = 'trackingData_' + filename +'.mat'
     output_dir = 'UMouseOutput/' + filename + '_behavior_df'
     
     # Load and preprocess the data
-    um_load = WarrenDataProcess(expt_pathname, output_path=output_dir)  # 
+    behavior_df = WarrenDataProcess(expt_pathname, output_path=output_dir)  # 
 
 
 

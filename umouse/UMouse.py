@@ -9,10 +9,11 @@ import numpy as np
 import pandas as pd
 from behavelet import wavelet_transform
 import umap
+import os
 
 class UMouse:
     def __init__(self, expt_files=None, output_dir=None): 
-        
+        self.expt_files = []
         # # save mwt_paths as a class field
         # if isinstance(expt_files, str):
         #     expt_files = list([expt_files])
@@ -24,14 +25,14 @@ class UMouse:
         #         output_dir = list([output_dir])
         #     self.output_dir = output_dir
 
-    def transform_mwt(self, df, f_sample, columns=None, n_frequencies=25, fmin=1, fmax=None):
+    def transform_mwt(self, df, f_sample, n_frequencies=25, fmin=1, fmax=None, columns=None):
         """
         Loads frames to generate the embedding fit and performs the fit. 
 
         Parameters
         ----------
         df : dataframe,  a path or list of paths
-            Df, Path or list of both for the behavioral data to be analyzed. The input format is compatible with DLC output
+            Df, Path or list of paths for the behavioral data to be analyzed. The input format is compatible with DLC output
         n_frequencies : int
             number of groups to divide the frequencies range into.
         columns: list of strings
@@ -54,34 +55,39 @@ class UMouse:
             
         if type(df) is list:
             spect_paths = []
+            freq_list = []
+            power_list = []
             for ddf in df:
                 df_data = pd.read_csv(ddf)
                 
-                if columns:
+                if columns is not None:
                     df_data = df_data[[columns]]
                         
-                spect_data = self._compute_mwt(df_data, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
+                freqs, power, spect_data = self._compute_mwt(df_data, n_frequencies, f_sample, fmin, fmax)
                 
                 output_path = ddf.split('.')[0]+'_mwt.npy'
                 spect_paths.append(output_path)
+                freq_list.append(freqs)
+                power_list.append(power)
                 
                 np.save(output_path, spect_data)
+                #spect_data.to_csv(path_or_buf = output_path, index=False)
                 
-                return spect_paths
+            return freq_list, power_list, spect_paths
             
         else: 
             if type(df) is str:
-                df_data = pd.load_cvs(df)
-            elif isinstance(df_data, pd.DataFrame): 
+                df_data = pd.read_csv(df)
+            elif isinstance(df, pd.DataFrame): 
                 df_data = df
             else:
                 return print('Warning: input must be a path, list of paths, or dataFrame')
             
-            if 'columns' in locals():
+            if columns is not None:
                     df_data = df_data[[columns]]
-            spect_data = self._compute_mwt(df_data, self.n_frequencies, self.f_sample, self.fmin, self.fmax)
+            freqs, power, spect_data = self._compute_mwt(df_data, n_frequencies, f_sample, fmin, fmax)
         
-            return spect_data 
+            return freqs, power, spect_data 
     
     def fit_umap(self, data, fr_per_sess=None, **kwargs):
         
@@ -125,12 +131,12 @@ class UMouse:
                 spect_data = np.load(data_path)  #spect_data of shape [frame, frequency]
                 
                 #collect sample frames from each mouse
-                if 'fit_data' in locals():
-                    fit_data = np.concatenate((multi_samp, spect_data[len(spect_data)//fr_per_sess,:]))
-                else:
+                if 'fit_data' not in locals():
                     fit_data = spect_data[len(spect_data)//fr_per_sess,:]
+                else:
+                    fit_data = np.concatenate((fit_data, spect_data[len(spect_data)//fr_per_sess,:]))
  
-         else:
+        else:
             fit_data = data
             
         self.um_model = self.UMAP.fit(fit_data)           
@@ -166,7 +172,7 @@ class UMouse:
             #load the dataset
             if len(transform_path) == 1:
                 spect_data = np.load(transform_path[0])  #spect_data of shape [frame, frequency]
-            elif isinstance(fit_path, str):
+            elif isinstance(transform_path, str):
                 spect_data = np.load(transform_path)
             
             #transform the new dataset

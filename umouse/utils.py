@@ -125,6 +125,7 @@ def WarrenDataProcess(expt_pathname, output_path=None, paws_list=None,
     
     #save the behavior df
     behavior_df.to_csv(path_or_buf = output_path, index=False)
+    #np.save(output_path, behavior_df)
     
     return behavior_df
     
