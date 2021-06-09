@@ -23,17 +23,17 @@ UMAP_dfs = [a_df, b_df, c_df]
 
 UMAP_dfs_all = pd.concat(UMAP_dfs)
 behavior_labels = [np.random.randint(0,4,len(i)) for i in UMAP_dfs]
-# behavior_labels = np.random.randint(0,4,len(UMAP_dfs_all))
-behavior_legend = [f'beh_{num}' for num in range(max(np.unique(behavior_labels))+1)]
+behavior_legend = ['walk','run','jump','stop']
 
 n = 3
 k = 3
 spread=3
 
-UMPlot.plot_embedding(UMAP_dfs, sep_data=True, save='random/UMAP_embedding')
+# UMPlot.plot_embedding(UMAP_dfs, sep_data=True, save='random/UMAP_embedding')
 inter = UMPlot.interactive(n,k,spread,UMAP_dfs, behavior_labels, behavior_legend)
-inter.get_points(save_embedding='random/UMAP_beh', save_chosen_points='random/points')
-inter.plot_traces(UMAP_dfs, ['dim9'], save='random/traces')
+# inter.get_points(save_embedding='random/UMAP_beh', save_chosen_points='random/points')
+# inter.plot_traces(UMAP_dfs.apend(np.random.randint(0,4,len(a))), ['dim9'], save='random/traces')
+inter.get_points()
 
 #%% example with 3 camera set up
 UMAP_dfs = pd.read_csv('3_camera/nmf.csv')
@@ -44,11 +44,10 @@ k = 5
 spread=70
 fps = 70
 ds = 50
-local_path_to_video = '/Users/jimmytabet/NEL/Projects/BH3D/mov.h5'
-video_path = local_path_to_video
+video_path = '/Users/jimmytabet/NEL/NEL-LAB Dropbox/NEL/Datasets/Behavior3D/mov.h5'
 save_path = '3_camera/behavior_montage.avi'
 
 inter = UMPlot.interactive(n, k, spread, UMAP_dfs, ds=50)
-inter.get_points(save_embedding=True, save_chosen_points=True)
+inter.get_points()#save_embedding=True, save_chosen_points=True)
 inter.plot_traces(behavior_dfs, behavior_variable, save=True)
 inter.behavior_montage(video_path, save_path, fps)

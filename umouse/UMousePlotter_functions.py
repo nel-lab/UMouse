@@ -34,10 +34,15 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, 
     dfs = load_dfs(dfs)
     behavior_labels = load_dfs(behavior_labels)
 
+    # check that same number of data sets are passed to UMAP and behavior_labels
+    if len(dfs) != len(behavior_labels):
+        raise ValueError('Number of data sets in UMAP and behavior labels does not match')
+
     # check that UMAP and behavior_labels are same size
-    if not all([len(i) == len(j) for i,j in zip(dfs, behavior_labels)]):
-        raise ValueError('Size of UMAP points and corresponding behavior labels do not match \
-                         (not every frame has a behavior label)')
+    elif not all([len(i) == len(j) for i,j in zip(dfs, behavior_labels)]):
+        raise ValueError('Size of UMAP points and corresponding behavior labels does not match')
+    else:
+        pass
     
     dfs = [df[::ds] for df in dfs]
     behavior_labels = [df[::ds] for df in behavior_labels]
@@ -101,9 +106,9 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], ds=1, sep_da
     
     # plot embedding with behavior labels if given
     if len(behavior_labels):
-        # raise error if legend is not given
+        # generate behavior_legend if none is provided
         if not len(behavior_legend):
-            raise ValueError('Provide behavior legend assoicated with behavior labels')
+            behavior_legend = [f'behavior {num+1}' for num in range(max(np.unique(behavior_labels))+1)]
         
         # plot embedding with behavior labels
         fig, ax = plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend,
@@ -197,6 +202,18 @@ class interactive():
         UMAP_dfs = load_dfs(UMAP_dfs)
         behavior_labels = load_dfs(behavior_labels)
         
+        # if behavior labels are passed in, check that they match size of UMAP
+        if len(behavior_labels):
+            # check that same number of data sets are passed to UMAP and behavior_labels
+            if len(UMAP_dfs) != len(behavior_labels):
+                raise ValueError('Number of data sets in UMAP and behavior labels does not match')
+        
+            # check that UMAP and behavior_labels are same size
+            elif not all([len(i) == len(j) for i,j in zip(UMAP_dfs, behavior_labels)]):
+                raise ValueError('Size of UMAP points and corresponding behavior labels does not match')
+            else:
+                pass
+        
         # set class variables
         self.n = n_clusters
         self.k = k_points
@@ -251,11 +268,9 @@ class interactive():
         # raise error if number of points > total number of frames
         if (n*k)>len(UMAP_dfs_all):
             if ds != 1:
-                raise ValueError(f'n_clusters*k_points ({n*k}) > total downsampeled points ({len(UMAP_dfs_all)}).\
-                                 Decrease n_clusters, k_points, or ds')
+                raise ValueError(f'n_clusters*k_points ({n*k}) > total downsampeled points ({len(UMAP_dfs_all)}). Decrease n_clusters, k_points, or ds')
             else:
-                raise ValueError(f'n_clusters*k_points ({n*k}) > total points ({len(UMAP_dfs_all)}).\
-                                 Decrease n_clusters or k_points.')
+                raise ValueError(f'n_clusters*k_points ({n*k}) > total points ({len(UMAP_dfs_all)}). Decrease n_clusters or k_points.')
         
         # plot embedding (optionally with behavior labels)      
         fig, ax = plot_embedding(UMAP_dfs, behavior_labels = behavior_labels,
@@ -384,8 +399,11 @@ class interactive():
         # load dfs    
         behavior_dfs = load_dfs(behavior_dfs)
         
+        # check that same number of data sets are passed to UMAP and behavior dfs
+        if len(self.UMAP_dfs) != len(behavior_dfs):
+            raise ValueError('Number of data sets in UMAP and behavior data does not match')
+
         # collect traces info from selected frames
-    
         # concat all behavior dfs
         behavior_dfs_all = pd.concat(behavior_dfs, keys = [num for num in range(len(behavior_dfs))])
         
@@ -487,6 +505,10 @@ class interactive():
         None. Saves behavior montage to save_path.
     
         '''
+        
+        # raise error if more than 1 dataset
+        if len(self.UMAP_dfs) != 1:
+            raise ValueError('Behavior montage only works with 1 dataset/video')
         
         # get interactive points from UMAP embedding
         if not len(indices):
