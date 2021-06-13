@@ -285,6 +285,138 @@ def set_axes(figure, num_clusters, num_points, show_y = False):
     if not show_y:
         # remove yticks
         [ax.set_yticks([]) for ax in subplots]
+        
+def get_points_high_dim(manual_points, k, spread, UMAP_dfs, ds):
+    '''
+    Generate k_neighbors to each point in manual_points. Used in high dimension
+    UMAP embedding (>3) so as to not plot points as in get_points function.
+
+    Parameters
+    ----------
+    manual_points : list or numpy array
+        List or array of points, from which k_neighbors will be generated. Points
+        should have same dimension as columns in UMAP_embedding.
+    k : int
+        Number of points in each cluster.
+    spread : int
+        How many frames (before and after) each point to plot, i.e.
+        [point-spread:point+spread].
+    UMAP_dfs : str/pandas df, or list of str's/pandas df's
+        UMAP embeddings to be plotted.
+
+    Returns
+    -------
+    selected_frames : numpy array
+        Array of frame indices at the user-selected points, corresponding to 
+        index of UMAP/behavior data (concatenated if multiple datasets are passed).
+
+    '''
+    
+    n = len(manual_points)
+              
+    # downsample UMAP
+    UMAP_dfs_ds = [df[::ds] for df in UMAP_dfs]
+        
+    # concat all UMAP dfs
+    UMAP_dfs_all_og = pd.concat(UMAP_dfs_ds, keys = [num for num in range(len(UMAP_dfs_ds))])
+    # only keep dim1/dim2 for plotting
+    # UMAP_dfs_all_og = UMAP_dfs_all_og[['dim1','dim2']]
+    
+    UMAP_dfs_all = UMAP_dfs_all_og.copy()
+    
+    # raise error if number of points > total number of frames
+    if (n*k)>len(UMAP_dfs_all):
+        if ds != 1:
+            raise ValueError(f'n_clusters*k_neighbors ({n*k}) > total downsampeled points ({len(UMAP_dfs_all)}). Decrease n_clusters, k_neighbors, or ds')
+        else:
+            raise ValueError(f'n_clusters*k_neighbors ({n*k}) > total points ({len(UMAP_dfs_all)}). Decrease n_clusters or k_neighbors.')
+
+    # select points to show traces
+    selected_pts_all = []
+    for i in range(n):
+        pt = manual_points[i]
+        
+        # sort points by distance to selected point
+        dist = np.linalg.norm(UMAP_dfs_all-pt, axis=1)
+        sorted_dist = np.argsort(dist)
+        # get sorted point indices
+        index = UMAP_dfs_all.iloc[sorted_dist].index
+        
+        # init variables to pick points that are not close or on edge of data
+        selected_pts = []
+        idxs = []
+
+        # iter through all points to find suitable ones
+        for idx in index:
+            # check if there are k points yet
+            if len(selected_pts) == k:
+                break
+            
+            # init variables
+            (df_num, frame) = idx
+            skip = False
+            end = len(UMAP_dfs[df_num])
+            
+            # check if close to previously selected points
+            if len(idxs):
+                sel_pt = np.array(idxs)
+                sel_pt_df = sel_pt[sel_pt[:,0] == df_num]
+                
+                check = abs(sel_pt_df[:,1]-frame)<spread
+                skip = check.any()
+                
+            # edge cases - skip point
+            if frame-spread<0 or frame+spread>end-1:
+                continue
+            # point close to previously selected point - skip point
+            elif skip:
+                continue
+            # add to list and remove to not duplicate
+            else:
+                idxs.append(idx)
+                selected_pts.append(UMAP_dfs_all.loc[idx])
+                UMAP_dfs_all = UMAP_dfs_all.drop(idx)
+        
+        # if not enough points, do it again without restrictions on proximity to previous points
+        if len(selected_pts) != k:
+    
+            # iter through all points to find suitable ones
+            for idx in index:
+                if idx in idxs:
+                    continue
+
+                # check if there are k points yet
+                if len(selected_pts) == k:
+                    break
+                
+                # init variables
+                (df_num, frame) = idx
+                end = len(UMAP_dfs[df_num])
+                    
+                # edge cases - skip point
+                if frame-spread<0 or frame+spread>end-1:
+                    continue
+                # add to list and remove to not duplicate
+                else:
+                    selected_pts.append(UMAP_dfs_all.loc[idx])
+                    UMAP_dfs_all = UMAP_dfs_all.drop(idx)
+        
+        # check if there are enough usable points
+        selected_pts = np.array(selected_pts)
+        if len(selected_pts) != k:
+            raise ValueError('Not enough eligible points. Decrease n_clusters, k_neighbors, or spread')
+                        
+        # append to all points list            
+        selected_pts_all.append(selected_pts)
+    
+    # get selected frames/indices from selected points
+    selected_pts_all = np.array(selected_pts_all).reshape(-1, UMAP_dfs_all_og.shape[1])
+    selected_frames = [int(np.where((UMAP_dfs_all_og == pt).all(axis=1))[0]) for pt in selected_pts_all]
+    
+    # multiply by ds to get proper frames/indices
+    selected_frames = ds*np.array(selected_frames)
+    
+    return selected_frames
 
 #%% interactive plotting class
 class interactive():
@@ -295,7 +427,7 @@ class interactive():
     ----------
     n_clusters : int
         Number of clusters.
-    k_points : int
+    k_neighbors : int
         Number of points in each cluster.
     spread : int
         How many frames (before and after) each point to plot, i.e.
@@ -321,7 +453,7 @@ class interactive():
     Methods
     -------
     get_points(sep_data=False, save_embedding=False, save_chosen_points=False):
-        Choose points interactively from UMAP embedding.
+        Choose points interactively from UMAP embedding, or generate k_neighbors if passed a list of points.
     plot_traces(behavior_dfs, behavior_variable, selected_frames = [], show_y=False, save=False):
         Plot traces for selected frames.
     behavior_montage(video_path, save_path, fps, indices = []):  
@@ -329,7 +461,7 @@ class interactive():
 
     """
     
-    def __init__(self, n_clusters, k_points, spread, UMAP_dfs, behavior_labels = [], behavior_legend = [], ds = 1):        
+    def __init__(self, n_clusters, k_neighbors, spread, UMAP_dfs, behavior_labels = [], behavior_legend = [], ds = 1):        
         '''
         Initialization.
 
@@ -337,7 +469,7 @@ class interactive():
         ----------
         n_clusters : int
             Number of clusters.
-        k_points : int
+        k_neighbors : int
             Number of points in each cluster.
         spread : int
             How many frames (before and after) each point to plot, i.e.
@@ -384,19 +516,24 @@ class interactive():
         
         # set class attributes
         self.n = n_clusters
-        self.k = k_points
+        self.k = k_neighbors
         self.spread = spread
         self.UMAP_dfs = UMAP_dfs
         self.behavior_labels = behavior_labels
         self.behavior_legend = behavior_legend
         self.ds = ds
         
-    def get_points(self, sep_data=False, save_embedding=False, save_chosen_points=False):
+    def get_points(self, manual_points = [], sep_data=False, save_embedding=False, save_chosen_points=False):
         '''
-        Choose points interactively from UMAP embedding.
+        Choose points interactively from UMAP embedding, or generate k_neighbors if passed a list of points.
 
         Parameters
         ----------
+        manual_points : list or numpy array, optional
+            List or array of points, from which k_neighbors will be generated.
+            Points should have same dimension as columns in UMAP_embedding.
+            The default is [], which prompts user to interactively choose points
+            from UMAP embedding (if 2D).
         sep_data : bool, optional
             Display each dataset in different color. The default is False.
         save_embedding : bool or str, optional
@@ -423,9 +560,26 @@ class interactive():
         behavior_legend = self.behavior_legend
         ds = self.ds
         
-        # raise error if using 3D embedding
-        if all('dim3' in i for i in [df.columns.tolist() for df in UMAP_dfs]):
-            raise ValueError('interactive trace plotting only available for 2D UMAP embeddings')
+        # check for compatibility 
+        if len(manual_points):
+            dim_check = np.array(manual_points)
+            
+            # raise error if dimension does not equal UMAP dimension
+            if dim_check.shape[1] != UMAP_dfs[0].shape[1]:
+                raise ValueError(f'dimension of manual_points ({dim_check.shape[1]}) not equal to dimension of UMAP_embedding ({UMAP_dfs[0].shape[1]})')
+            
+            # use get_points_high_dim if dim>3 (so as to not plot)
+            elif dim_check.shape[1] > 3:
+                return get_points_high_dim(manual_points, k, spread, UMAP_dfs, ds)
+            
+            # pass if everything is fine
+            else:
+                pass
+        
+        # raise error if using 3D embedding and did not provide points
+        else:
+            if all('dim3' in i for i in [df.columns.tolist() for df in UMAP_dfs]):
+                raise ValueError('interactive trace plotting only available for 2D UMAP embeddings')
                   
         # downsample UMAP
         UMAP_dfs_ds = [df[::ds] for df in UMAP_dfs]
@@ -433,16 +587,16 @@ class interactive():
         # concat all UMAP dfs
         UMAP_dfs_all_og = pd.concat(UMAP_dfs_ds, keys = [num for num in range(len(UMAP_dfs_ds))])
         # only keep dim1/dim2 for plotting
-        UMAP_dfs_all_og = UMAP_dfs_all_og[['dim1','dim2']]
+        # UMAP_dfs_all_og = UMAP_dfs_all_og[['dim1','dim2']]
         
         UMAP_dfs_all = UMAP_dfs_all_og.copy()
         
         # raise error if number of points > total number of frames
         if (n*k)>len(UMAP_dfs_all):
             if ds != 1:
-                raise ValueError(f'n_clusters*k_points ({n*k}) > total downsampeled points ({len(UMAP_dfs_all)}). Decrease n_clusters, k_points, or ds')
+                raise ValueError(f'n_clusters*k_neighbors ({n*k}) > total downsampeled points ({len(UMAP_dfs_all)}). Decrease n_clusters, k_neighbors, or ds')
             else:
-                raise ValueError(f'n_clusters*k_points ({n*k}) > total points ({len(UMAP_dfs_all)}). Decrease n_clusters or k_points.')
+                raise ValueError(f'n_clusters*k_neighbors ({n*k}) > total points ({len(UMAP_dfs_all)}). Decrease n_clusters or k_neighbors.')
         
         # plot embedding (optionally with behavior labels)      
         fig, ax = plot_embedding(UMAP_dfs, behavior_labels = behavior_labels,
@@ -455,9 +609,12 @@ class interactive():
         # interactively select points to show traces
         selected_pts_all = []
         for i in range(n):
-            # user input
-            pt = plt.ginput()
-            pt = np.array(pt).squeeze()
+            if not len(manual_points):
+                # user input
+                pt = plt.ginput()
+                pt = np.array(pt).squeeze()
+            else:
+                pt = manual_points[i]
             
             # sort points by distance to selected point
             dist = np.linalg.norm(UMAP_dfs_all-pt, axis=1)
@@ -527,11 +684,11 @@ class interactive():
             # check if there are enough usable points
             selected_pts = np.array(selected_pts)
             if len(selected_pts) != k:
-                raise ValueError('Not enough eligible points. Decrease n_clusters, k_points, or spread')
+                raise ValueError('Not enough eligible points. Decrease n_clusters, k_neighbors, or spread')
                             
             # plot k selected points with text label
             ax.scatter(*selected_pts.T, c = 'k', s=10, marker = '*', label = '_'*i+'selected\npoints')
-            [plt.text(*sl_pt, str(i+1)+string.ascii_letters[j]) for j, sl_pt in enumerate(selected_pts)]
+            [ax.text(*sl_pt, str(i+1)+string.ascii_letters[j]) for j, sl_pt in enumerate(selected_pts)]
             ax.set_title(f'UMAP embeded points\nselected point(s) {i+1} of {n}')
     
             # pause to update plot with selected point
@@ -541,7 +698,7 @@ class interactive():
             selected_pts_all.append(selected_pts)
         
         # get selected frames/indices from selected points
-        selected_pts_all = np.array(selected_pts_all).reshape(-1,2)
+        selected_pts_all = np.array(selected_pts_all).reshape(-1, UMAP_dfs_all_og.shape[1])
         selected_frames = [int(np.where((UMAP_dfs_all_og == pt).all(axis=1))[0]) for pt in selected_pts_all]
         
         # multiply by ds to get proper frames/indices
