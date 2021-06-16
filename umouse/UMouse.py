@@ -89,7 +89,7 @@ class UMouse:
              fit_data = []
              target_path = ddf.split('.')[0]+'_mwt.npy'
              if os.path.exists(target_path):
-                print('Found file:' + target_path + ", not recomputing wavelet transform")
+                print('Found file: ' + target_path + ", not recomputing wavelet transform")
                 try:
                     spect_data = np.load(target_path)
                 except:
@@ -120,9 +120,8 @@ class UMouse:
 
         Parameters
         ----------
-        transform_path : string or list, optional
+        transform_path : string or list
             Path or list of paths for the spectrographic data to be analyzed. 
-            The default is to use all the datsets in self.pathnames.
 
         Returns
         -------
@@ -136,18 +135,19 @@ class UMouse:
             target_path = this_path.split('.')[0]+'_mwt.npy'
             target_path_csv = this_path.split('.')[0]+'_umap.csv'
             if os.path.exists(target_path):
-               print('Found file:' + target_path + ", not recomputing wavelet transform")
+               print('Found file: ' + target_path)
                spect_data = np.load(target_path)
                #transform the new dataset
+               print('file loaded, embedding data')
                this_embedding = self.UMAP.transform(spect_data)
-               this_embedding = pd.Dataframe(this_embedding, columns=['dim_' + i for i in range(this_embedding.shape[1])])
+               this_embedding = pd.DataFrame(this_embedding, columns=['dim_' + str(i) for i in range(this_embedding.shape[1])])
                #save the new embedding
-               this_path.join(this_embedding)
-               this_path.to_csv(target_path_csv, this_embedding)
+               print('transform complete, saving data')
+               #this_path.join(this_embedding)
+               this_embedding.to_csv(target_path_csv)
             else:
                raise Exception('File '+target_path+' not found,' + "Be sure you run the fit method first")
     
-        
         
 
     def _compute_mwt(self, behavior_df, n_frequencies, f_sample, fmin, fmax):
