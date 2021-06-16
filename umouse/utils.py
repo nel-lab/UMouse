@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
-def WagnerLoader(expt_pathname, output_path=None, paws_list=None, 
+def WarrenDataProcess(expt_pathname, output_path=None, paws_list=None, 
                  lick_window=None, whisk_react_window=None, reward_window=None):
     """
     Specific to the data collected by Richard Warren's open source locomotion setup. 
