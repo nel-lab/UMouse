@@ -55,9 +55,9 @@ spread = 3
 # interactive
 inter = UMPlot.interactive(n, k, spread, UMAP_dfs, behavior_labels, behavior_legend)
 # get points
-inter.get_points(save_embedding='random/UMAP_behavior_inter', save_chosen_points='random/points_inter')
+inter.get_points()
 # plot traces (using UMAP data as behavior data) 
-inter.plot_traces(UMAP_dfs, ['dim2'], save='random/traces_inter')
+inter.plot_traces(UMAP_dfs, ['dim2'])
 
 #%% example with 3 camera set up
 # set up data

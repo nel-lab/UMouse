@@ -99,7 +99,7 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, 
     fig = plt.figure()
             
     # plot 3D
-    if all('dim3' in i for i in [df.columns.tolist() for df in dfs]):   
+    if all('dim_2' in i for i in [df.columns.tolist() for df in dfs]):   
         dfs = pd.concat(dfs)
 
         ax = fig.add_subplot(projection='3d', title='UMAP embeded points by behavior label',
@@ -109,7 +109,7 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, 
         for lab in np.unique(behavior_labels):
             df = dfs[behavior_labels == lab]
 
-            ax.scatter(df['dim1'], df['dim2'], df['dim3'], label = behavior_legend[lab])
+            ax.scatter(df['dim_0'], df['dim_1'], df['dim_2'], label = behavior_legend[lab])
    
     # plot 2D
     else:
@@ -121,7 +121,7 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, 
         for lab in np.unique(behavior_labels):
             df = dfs[behavior_labels == lab]
 
-            ax.scatter(df['dim1'], df['dim2'], label = behavior_legend[lab])
+            ax.scatter(df['dim_0'], df['dim_1'], label = behavior_legend[lab])
     
     fig.legend()
     
@@ -197,7 +197,7 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], ds=1, sep_da
     fig = plt.figure()
             
     # plot 3D
-    if all('dim3' in i for i in [df.columns.tolist() for df in dfs]):    
+    if all('dim_2' in i for i in [df.columns.tolist() for df in dfs]):    
         ax = fig.add_subplot(projection='3d', title='UMAP embeded points',
                              xlabel='dimension 1', ylabel = 'dimension 2', zlabel = 'dimension 3')
         for num, df in enumerate(dfs):
@@ -208,7 +208,7 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], ds=1, sep_da
             else:
                 label = '_'*num+'data'
             
-            ax.scatter(df['dim1'], df['dim2'], df['dim3'], c = colors, label = label)
+            ax.scatter(df['dim_0'], df['dim_1'], df['dim_2'], c = colors, label = label)
    
     # plot 2D
     else:
@@ -221,7 +221,7 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], ds=1, sep_da
             else:
                 label = '_'*num+'data'
             
-            ax.scatter(df['dim1'], df['dim2'], c = colors, label = label)
+            ax.scatter(df['dim_0'], df['dim_1'], c = colors, label = label)
     
     # show legend if seperate data sets
     if sep_data:
@@ -319,8 +319,8 @@ def get_points_high_dim(manual_points, k, spread, UMAP_dfs, ds):
         
     # concat all UMAP dfs
     UMAP_dfs_all_og = pd.concat(UMAP_dfs_ds, keys = [num for num in range(len(UMAP_dfs_ds))])
-    # only keep dim1/dim2 for plotting
-    # UMAP_dfs_all_og = UMAP_dfs_all_og[['dim1','dim2']]
+    # only keep dim_1/dim_2 for plotting
+    # UMAP_dfs_all_og = UMAP_dfs_all_og[['dim_1','dim_2']]
     
     UMAP_dfs_all = UMAP_dfs_all_og.copy()
     
@@ -434,7 +434,7 @@ class interactive():
         [point-spread:point+spread].
     UMAP_dfs : str/pandas df, or list of str's/pandas df's
         UMAP embeddings to be plotted.
-    behavior_labels : str/pandas df/numpy array, or list of str's/pandas df's/numpy arrays
+    behavior_labels : str/pandas df/numpy array, or list of strs/pandas dfs/numpy arrays
         Behavior labels associated with each UMAP points. Each individual label
         should be an integer from 0 to (number of behavior types). If provided,
         will plot UMAP embedding by labels.
@@ -578,7 +578,7 @@ class interactive():
         
         # raise error if using 3D embedding and did not provide points
         else:
-            if all('dim3' in i for i in [df.columns.tolist() for df in UMAP_dfs]):
+            if all('dim_2' in i for i in [df.columns.tolist() for df in UMAP_dfs]):
                 raise ValueError('interactive trace plotting only available for 2D UMAP embeddings')
                   
         # downsample UMAP
@@ -586,8 +586,8 @@ class interactive():
             
         # concat all UMAP dfs
         UMAP_dfs_all_og = pd.concat(UMAP_dfs_ds, keys = [num for num in range(len(UMAP_dfs_ds))])
-        # only keep dim1/dim2 for plotting
-        # UMAP_dfs_all_og = UMAP_dfs_all_og[['dim1','dim2']]
+        # only keep dim_1/dim_2 for plotting
+        # UMAP_dfs_all_og = UMAP_dfs_all_og[['dim_1','dim_2']]
         
         UMAP_dfs_all = UMAP_dfs_all_og.copy()
         
