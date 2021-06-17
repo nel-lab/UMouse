@@ -50,6 +50,37 @@ def WarrenDataProcess(expt_pathname, output_path=None, paws_list=None,
     # open the data. In dictionary format. 
     mat_data = loadmat(expt_pathname)
     
+    #check for nans at the beginning vs end of paws
+    good_frames = np.sum(np.sum(mat_data['paws'], axis=2), axis=1)
+    if np.sum(np.isnan(good_frames[0:1000])) != 0:
+        early_cut = np.sum(np.isnan(good_frames[0:1000]))
+    else:
+        early_cut = 0
+    if np.sum(np.isnan(good_frames[-1000:])) != 0:
+        late_cut = len(good_frames)-np.sum(np.isnan(good_frames[-1000:]))
+    else:
+        late_cut = len(good_frames)
+    
+    #remove frames from beginning vs end of paws, t, bodyAngles, jaw, vel, whsikerAngle
+    mat_data['paws'] = mat_data['paws'][early_cut:late_cut,:,:]
+    mat_data['t'] = mat_data['t'][early_cut:late_cut]
+    mat_data['bodyAngles'] = mat_data['bodyAngles'][early_cut:late_cut]
+    mat_data['jaw'] = mat_data['jaw'][early_cut:late_cut,:]
+    mat_data['vel'] = mat_data['vel'][early_cut:late_cut,:]
+    mat_data['whiskerAngle'] = mat_data['whiskerAngle'][early_cut:late_cut,:]
+    
+    #check for values outside of t within  wiskContactTimes, lickTimes, obstacleTimes, rewardTimes 
+    t_min = mat_data['t'][0]
+    t_max = mat_data['t'][-1]
+    mat_data['wiskContactTimes'] = mat_data['wiskContactTimes'][np.logical_and((mat_data['wiskContactTimes']>t_min), (mat_data['wiskContactTimes']<t_max))]
+    mat_data['lickTimes'] = mat_data['lickTimes'][np.logical_and((mat_data['lickTimes']>t_min), (mat_data['lickTimes']<t_max))]
+    mat_data['rewardTimes'] = mat_data['rewardTimes'][np.logical_and((mat_data['rewardTimes']>t_min), (mat_data['rewardTimes']<t_max))]
+    mat_data['obstacleTimes'] = mat_data['obstacleTimes'][np.logical_and((mat_data['obstacleTimes'][:,0]>t_min), (mat_data['obstacleTimes'][:,1]<t_max)), :]
+    
+    #check for nans in wiskContactTimes
+    if np.sum(np.isnan(mat_data['wiskContactTimes'])) != 0:
+        mat_data['wiskContactTimes'] = mat_data['wiskContactTimes'][~np.isnan(mat_data['wiskContactTimes'])]
+    
     # make variables for each column which is used
     tVar = mat_data['t']
     obstTimes = mat_data['obstacleTimes'] 
@@ -128,3 +159,10 @@ def WarrenDataProcess(expt_pathname, output_path=None, paws_list=None,
     
     return behavior_df
     
+        
+        
+        
+
+
+
+

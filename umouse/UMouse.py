@@ -88,7 +88,7 @@ class UMouse:
         for ddf in df:
              fit_data = []
              target_path = ddf.split('.')[0]+'_mwt.npy'
-             if os.path.exists(target_path):
+             if os.path.exists(target_path) and ~recompute_mwt:
                 print('Found file: ' + target_path + ", not recomputing wavelet transform")
                 try:
                     spect_data = np.load(target_path)
