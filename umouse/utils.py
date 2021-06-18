@@ -8,7 +8,31 @@
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat
+import h5py
+import cv2
 
+def mp4_to_hdf5(mp4_path, hdf5_path):
+
+    cap = cv2.VideoCapture(mp4_path)
+    mov = []
+    counter = 0
+    while True:
+       ret, frame = cap.read()
+       if ret == False:
+           break
+       mov.append(frame[:,:,-1])
+       if counter%1000 == 0:
+           print('processing frame', counter)
+       counter += 1
+       
+    mov = np.array(mov)
+    print('mp4 processed,', mov.shape)
+    
+    # (if saving with compression, take a long time to index/decompress later)
+    with h5py.File(hdf5_path,'w') as hf:
+        hf.create_dataset('mov', data=mov, dtype = mov.dtype)#, compression='lzf')
+    
+    
 def WarrenDataProcess(expt_pathname, output_path=None, paws_list=None, 
                  lick_window=None, whisk_react_window=None, reward_window=None):
     """

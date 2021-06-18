@@ -13,6 +13,7 @@ import os, cv2, h5py, string
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from skimage.util import montage
 
 #%% functions
@@ -46,6 +47,98 @@ def load_dfs(dfs):
     
     return dfs_all
 
+def plot_gradient_var(embedding, z_var, title_str=None):
+    """
+    
+    Parameters
+    ----------
+    embedding : array of shape [2,n]
+        umap embedding points.
+    z_var : array like of shape [1,n]
+        vector of intensity values corresponding to each frame or point in the umap embedding.
+        e.g. locomotion velocity or body angle. 
+    title_str : str, optional
+        title string for the plot. The default is None.
+
+    Returns
+    -------
+    plot of umap embedding color coded according the values in z_var
+
+    """
+    #since mwt is a difference based transform then the output is len = n-1
+    if len(z_var) == len(embedding)+1:
+        z_var = z_var[:-1]
+
+    #make scatterplot
+    fig = plt.figure()
+    
+    this_scatter = plt.scatter(*embedding.T, 
+               c=z_var[0:-1], 
+               vmin = z_var.min(),
+               vmax = z_var.max(),
+               marker='o', s=0.5, alpha=0.2) 
+
+    plt.title(title_str)
+    plt.colorbar(this_scatter)
+    plt.xlabel('UMAP Dim 1')
+    plt.ylabel('UMAP Dim 2')
+
+def vector_field_plot(umap_embedding, down_samp=1, z_axis='direction'):
+    """
+    Parameters
+    ----------
+    umap_embedding : array of shape [2,n]
+        umap embedding points.
+    down_samp : int, optional
+        downsampling factor for umap embedding. The default is 1.
+    z_axis : string, optional
+        value to plot on the z axis. 'magnitude' or 'direction'.
+        magnitude corresponds to the distance between a given point and the next point in the umap embedding.
+        direction corresponds to the angle of the vector from one umap point to the next. 
+
+    Returns
+    -------
+    quiver plot 
+
+    """
+    z_axis = 'direction'#'direction' 'magnitude'
+    if z_axis == 'magnitude':
+        cmap = mpl.cm.viridis #sequential cmap for magnitude
+    elif z_axis == 'direction':
+        cmap = mpl.cm.hsv #cyclical cmap for angle
+    
+    #downsample and calculate vector components
+    x = umap_embedding[0::down_samp,0]
+    y = umap_embedding[0::down_samp,1]
+    u = x[1::] - x[0:-1]
+    v = y[1::] - y[0:-1]
+    uv = np.vstack((u,v))
+
+    # use quiver to plot the arrows
+    fig = plt.figure(dpi=200)
+    
+    if z_axis == 'magnitude':
+        #calculate magnitude of each vector
+        dist = np.linalg.norm(uv,axis=0)
+        normdist = mpl.colors.Normalize()
+        normdist.autoscale(dist)
+        plt.quiver(x[0:-1], y[0:-1], u, v, color=cmap(normdist(dist)))
+    elif z_axis == 'direction':
+        #calculate angle of each vector
+        theta = np.degrees(np.arctan2(*uv[::-1])) % 360.0
+        norm = mpl.colors.Normalize()
+        norm.autoscale(theta)
+        
+        # u = np.divide(u, abs(u))
+        # v = np.divide(v, abs(u))
+        plt.quiver(x[0:-1], y[0:-1], u, v, color=cmap(norm(theta)),
+                   scale=100)
+    
+    plt.colorbar(mpl.cm.ScalarMappable(cmap=cmap))
+    # plt.clim(0,360)
+    plt.title(z_axis + ' quiver plot of umap embedding trajectories')
+    
+    
 def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, save=False):
     '''
     Plot UMAP embedding with behavior labels.
