@@ -129,7 +129,7 @@ class UMouse:
 
         """
         if (type(transform_path) is not list) or (not os.path.exists(transform_path[0])):
-            raise Exception('The input must be a list of paths to existing cvs files')
+            raise Exception('The input must be a list of paths to existing csv files')
             
         for this_path in transform_path:
             target_path = this_path.split('.')[0]+'_mwt.npy'

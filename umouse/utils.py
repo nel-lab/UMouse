@@ -21,7 +21,7 @@ def mp4_to_hdf5(mp4_path, hdf5_path):
        if ret == False:
            break
        mov.append(frame[:,:,-1])
-       if counter%1000 == 0:
+       if counter%10000 == 0:
            print('processing frame', counter)
        counter += 1
        
