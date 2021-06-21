@@ -8,6 +8,9 @@
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat
+import h5py
+import cv2
+
 
 def WarrenDataProcess(expt_pathname, output_path=None, paws_list=None, 
                  lick_window=None, whisk_react_window=None, reward_window=None):

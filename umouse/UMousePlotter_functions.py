@@ -13,6 +13,7 @@ import os, cv2, h5py, string
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from skimage.util import montage
 
 #%% functions
@@ -40,12 +41,123 @@ def load_dfs(dfs):
     dfs_all = []
     for df in dfs:
         if isinstance(df, str):
-            dfs_all.append(pd.read_csv(df))
+            try:
+                pd.read_csv(df, usecols=['Unnamed: 0'])
+                dfs_all.append(pd.read_csv(df, index_col=0))
+            except:
+                dfs_all.append(pd.read_csv(df))
         else:
             dfs_all.append(pd.DataFrame(df))
     
     return dfs_all
 
+def plot_gradient_var(embedding, z_var, ds=1, title_str=None):
+    """
+    
+    Parameters
+    ----------
+    embedding : array of shape [2,n]
+        umap embedding points.
+    z_var : array like of shape [1,n]
+        vector of intensity values corresponding to each frame or point in the umap embedding.
+        e.g. locomotion velocity or body angle. 
+    title_str : str, optional
+        title string for the plot. The default is None.
+
+    Returns
+    -------
+    plot of umap embedding color coded according the values in z_var
+
+    """
+
+    if isinstance(z_var, pd.DataFrame):
+        z_var= z_var.to_numpy()
+    
+    if isinstance(embedding, pd.DataFrame):
+        embedding= embedding.to_numpy()
+        
+    
+    #since mwt is a difference based transform then the output is len = n-1
+    if len(z_var) == len(embedding)+1:
+        z_var = z_var[:-1]
+    
+    #downsample
+    if ds != 1:
+        z_var = z_var[::ds]
+        embedding = embedding[::ds]
+        
+    #make scatterplot
+    fig = plt.figure()
+    
+    this_scatter = plt.scatter(*embedding.T, 
+               c=z_var,#[0:-1], 
+               vmin = z_var.min(),
+               vmax = z_var.max(),
+               marker='o', s=1.5, alpha=0.4) 
+
+    plt.title(title_str)
+    plt.colorbar(this_scatter)
+    plt.xlabel('UMAP Dim 1')
+    plt.ylabel('UMAP Dim 2')
+
+def vector_field_plot(umap_embedding, down_samp=1, z_axis='direction'):
+    """
+    Parameters
+    ----------
+    umap_embedding : array or DataFrame of shape [2,n]
+        umap embedding points.
+    down_samp : int, optional
+        downsampling factor for umap embedding. The default is 1.
+    z_axis : string, optional
+        value to plot on the z axis. 'magnitude' or 'direction'.
+        magnitude corresponds to the distance between a given point and the next point in the umap embedding.
+        direction corresponds to the angle of the vector from one umap point to the next. 
+
+    Returns
+    -------
+    quiver plot 
+
+    """
+    if z_axis == 'magnitude':
+        cmap = mpl.cm.viridis #sequential cmap for magnitude
+    elif z_axis == 'direction':
+        cmap = mpl.cm.hsv #cyclical cmap for angle
+    
+    if isinstance(umap_embedding, pd.DataFrame):
+        umap_embedding = umap_embedding.to_numpy()
+    
+    #downsample and calculate vector components
+    x = umap_embedding[0::down_samp,0]
+    y = umap_embedding[0::down_samp,1]
+    u = x[1::] - x[0:-1]
+    v = y[1::] - y[0:-1]
+    uv = np.vstack((u,v))
+
+    # use quiver to plot the arrows
+    fig = plt.figure(dpi=200)
+    
+    if z_axis == 'magnitude':
+        #calculate magnitude of each vector
+        dist = np.linalg.norm(uv,axis=0)
+        normdist = mpl.colors.Normalize()
+        normdist.autoscale(dist)
+        plt.quiver(x[0:-1], y[0:-1], u, v, color=cmap(normdist(dist)))
+    elif z_axis == 'direction':
+        #calculate angle of each vector
+        theta = np.degrees(np.arctan2(*uv[::-1])) % 360.0
+        norm = mpl.colors.Normalize()
+        norm.autoscale(theta)
+        
+        # u = np.divide(u, abs(u))
+        # v = np.divide(v, abs(u))
+        plt.quiver(x[0:-1], y[0:-1], u, v, color=cmap(norm(theta)),
+                   scale=100)
+    
+    plt.colorbar(mpl.cm.ScalarMappable(cmap=cmap))
+    # plt.clim(0,360)
+    plt.title(z_axis + ' quiver plot of umap embedding trajectories')
+    
+    
 def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, save=False):
     '''
     Plot UMAP embedding with behavior labels.
@@ -852,7 +964,7 @@ class interactive():
         Parameters
         ----------
         video_path : str
-            Path to behavior video. Must be hdf5.
+            Path to behavior video. Must be mp4 or hdf5.
         save_path : str
             Path to save behavior montage. Must include extension/format (.avi, .mp4, .mov).
         fps : int
@@ -888,28 +1000,55 @@ class interactive():
         k = self.k
         spread = self.spread
                 
-        # get sorted indices (needed for h5py indexing)
-        indices_sorted = np.sort(indices)
+        # get sorted indices (needed for movie indexing)
+        indices_sorted = np.sort(indices) #user may select frames out of chronological order
         
         # reset indices from sorted
-        reset_indices = indices_sorted.searchsorted(indices)
+        reset_indices = indices_sorted.searchsorted(indices) #indeces_sorted and reset)+_indeces are lists of shape [1,n*k]
         
         # init big movie
         big_mov = []
-        
-        # open hdf5 movie
-        with h5py.File(video_path, 'r') as hf:
-            # get key (assuming first key)
-            key = [key for key in hf][0]
-    
+                    
+        if video_path.lower().endswith('.mp4'):
+            #open mp4 movie
+            cap = cv2.VideoCapture('run.mp4')
+
             # save montage of points for each frame
+            
             for i in range(2*spread+1):
+                
                 # index using sorted indices
-                frames_sorted = hf[key][indices_sorted-spread+i]
-                # use original frame order using reset indices
+                frames_sorted = []
+                for this_point in indices_sorted:
+                    #for each user selected point, extract a new frame in the window around that point
+                    cap.set(1, this_point-spread+i)
+                    ret, this_frame = cap.read()
+                    frames_sorted.append(this_frame[:,:,-1]) #frames_sorted will be a list of frames with len of [n*k]
+                    
+                #for all user selected points, put current timepoints into a single montage frame
+                frames_sorted = np.stack(frames_sorted)
                 frames = frames_sorted[reset_indices]
+                # frames = np.stack(frames_sorted[reset_indices])
+                
                 big_frame  = montage(frames, grid_shape=(n,k))
                 big_mov.append(big_frame)
+                    
+            cap.release()
+                
+        else:
+            # open hdf5 movie
+            with h5py.File(video_path, 'r') as hf:
+                # get key (assuming first key)
+                key = [key for key in hf][0]
+        
+                # save montage of points for each frame
+                for i in range(2*spread+1):
+                    # index using sorted indices
+                    frames_sorted = hf[key][indices_sorted-spread+i]
+                    # use original frame order using reset indices
+                    frames = frames_sorted[reset_indices]
+                    big_frame  = montage(frames, grid_shape=(n,k))
+                    big_mov.append(big_frame)
         
         # init montage video
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
