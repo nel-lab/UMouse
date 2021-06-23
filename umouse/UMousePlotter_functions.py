@@ -17,6 +17,59 @@ import matplotlib as mpl
 from skimage.util import montage
 
 #%% functions
+def play(save_path, loop=False, title='Behavior Movie'):
+    '''
+    Play a movie, optionally in a loop. Press 'q' to stop.
+
+    Parameters
+    ----------
+    save_path : str
+        Path to movie.
+    loop : bool, optional
+        Loop the movie. The default is False.
+    title : str, optional
+        Movie window name. The default is 'Behavior Movie'.
+
+    Returns
+    -------
+    None. Press 'q' to stop movie.
+
+    '''
+    
+    # load video
+    cap = cv2.VideoCapture(save_path) 
+    # init frame count/play
+    frame_counter = 0
+    play = True
+    
+    # play video in loop
+    while play:
+        # get frame
+        ret, frame = cap.read()
+        frame_counter += 1
+        
+        # if the last frame is reached...
+        if frame_counter == cap.get(cv2.CAP_PROP_FRAME_COUNT):
+            # reset the capture and the frame_counter if looped
+            if loop:
+                frame_counter = 0
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        
+            # stop movie if not looped
+            else:
+                play = False
+       
+        # show frame
+        cv2.imshow(title, frame)
+        
+        # to quit, press 'q'
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    
+    # release/destroy window when done
+    cap.release()
+    cv2.destroyAllWindows()
+
 def load_dfs(dfs):
     '''
     Load dataframes.
@@ -1060,26 +1113,3 @@ class interactive():
          
         video.release()
         print(f'behavior montage saved to {save_path}')
-        
-        # # play video - can't set frame rate?
-        # cap = cv2.VideoCapture(save_path)
-        
-        # # check if file opened successfully
-        # if (cap.isOpened()== False): 
-        #     raise ValueError('Error opening video file')
-        
-        # # read in video
-        # while(cap.isOpened()):
-        #     ret, frame = cap.read()
-        #     if ret == True:
-        #         # show resulting frame
-        #         cv2.imshow('Frame',frame)
-        #         # press 'q' to exit
-        #         if cv2.waitKey(25) & 0xFF == ord('q'):
-        #             break          
-        #     else: 
-        #       break
-        
-        # # close
-        # cap.release()
-        # cv2.destroyAllWindows()

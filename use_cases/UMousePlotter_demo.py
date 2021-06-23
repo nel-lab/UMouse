@@ -13,9 +13,9 @@ import umouse.UMousePlotter_functions as UMPlot
 
 #%% random test example - set up data
 # generate random embeddings
-a_df = pd.DataFrame(np.random.rand(25,3), columns = ['dim1','dim2','dim3'])
-b_df = pd.DataFrame(np.random.rand(25,3), columns = ['dim1','dim2','dim3'])
-c_df = pd.DataFrame(np.random.rand(25,3), columns = ['dim1','dim2','dim3'])
+a_df = pd.DataFrame(np.random.rand(25,3), columns = ['dim_0','dim_1','dim_2'])
+b_df = pd.DataFrame(np.random.rand(25,3), columns = ['dim_0','dim_1','dim_2'])
+c_df = pd.DataFrame(np.random.rand(25,3), columns = ['dim_0','dim_1','dim_2'])
 
 # # single data set
 # UMAP_dfs = [a_df]
@@ -41,11 +41,11 @@ inter = UMPlot.interactive(n, k, spread, UMAP_dfs)
 manual_pt = np.random.rand(n,3)
 inter.get_points(manual_pt, sep_data=True)
 # plot traces (using UMAP data as behavior data) 
-inter.plot_traces(UMAP_dfs, ['dim3'], save='random/traces_manual')
+inter.plot_traces(UMAP_dfs, ['dim_2'], save='random/traces_manual')
 
 #%% random test example - interactive
 # remove 3rd dim to show interatice case
-UMAP_dfs = [df.drop(columns = 'dim3') for df in UMAP_dfs]
+UMAP_dfs = [df.drop(columns = 'dim_2') for df in UMAP_dfs]
 
 # n: number of clusters, k: number of neighbors in cluster
 n = 3
@@ -57,7 +57,7 @@ inter = UMPlot.interactive(n, k, spread, UMAP_dfs, behavior_labels, behavior_leg
 # get points
 inter.get_points()
 # plot traces (using UMAP data as behavior data) 
-inter.plot_traces(UMAP_dfs, ['dim2'])
+inter.plot_traces(UMAP_dfs, ['dim_1'])
 
 #%% example with 3 camera set up
 # set up data
@@ -69,7 +69,7 @@ k = 5
 spread=70
 fps = 70
 ds = 50
-video_path = '/Users/jimmytabet/NEL/NEL-LAB Dropbox/NEL/Datasets/Behavior3D/mov.h5'
+video_path = '/home/nel-lab/NEL-LAB Dropbox/NEL/Datasets/Behavior3D/mov.h5'
 save_path = '3_camera/behavior_montage.avi'
 
 # interactive
@@ -80,3 +80,5 @@ inter.get_points(save_embedding=True, save_chosen_points=True)
 inter.plot_traces(behavior_dfs, behavior_variable, save=True)
 # make montage
 inter.behavior_montage(video_path, save_path, fps)
+# play movie
+UMPlot.play(save_path, loop=True)
