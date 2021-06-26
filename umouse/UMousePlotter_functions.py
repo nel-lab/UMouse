@@ -3,7 +3,7 @@
 """
 Created on Thu Jun  3 11:02:23 2021
 
-@author: jimmytabet
+@authors: Jake Heffley and jimmytabet
 
 Plotting module for UMouse.
 """
@@ -123,6 +123,12 @@ def plot_gradient_var(embedding, z_var, ds=1, title_str=None):
 
     """
 
+    if isinstance(embedding, str):
+        try:
+            pd.read_csv(embedding, index_col='Unnamed: 0')
+        except:
+            pd.read_csv(embedding)    
+        
     if isinstance(z_var, pd.DataFrame):
         z_var= z_var.to_numpy()
     
@@ -176,6 +182,9 @@ def vector_field_plot(umap_embedding, down_samp=1, z_axis='direction'):
     elif z_axis == 'direction':
         cmap = mpl.cm.hsv #cyclical cmap for angle
     
+    if isinstance(umap_embedding, str):
+        umap_embedding = pd.read_csv(umap_embedding)
+        
     if isinstance(umap_embedding, pd.DataFrame):
         umap_embedding = umap_embedding.to_numpy()
     
@@ -211,7 +220,7 @@ def vector_field_plot(umap_embedding, down_samp=1, z_axis='direction'):
     plt.title(z_axis + ' quiver plot of umap embedding trajectories')
     
     
-def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, save=False):
+def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, save=False, s=None, alpha=None):
     '''
     Plot UMAP embedding with behavior labels.
 
@@ -274,7 +283,7 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, 
         for lab in np.unique(behavior_labels):
             df = dfs[behavior_labels == lab]
 
-            ax.scatter(df['dim_0'], df['dim_1'], df['dim_2'], label = behavior_legend[lab])
+            ax.scatter(df['dim_0'], df['dim_1'], df['dim_2'], label = behavior_legend[lab], s=s, alpha=alpha)
    
     # plot 2D
     else:
@@ -286,7 +295,7 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, 
         for lab in np.unique(behavior_labels):
             df = dfs[behavior_labels == lab]
 
-            ax.scatter(df['dim_0'], df['dim_1'], label = behavior_legend[lab])
+            ax.scatter(df['dim_0'], df['dim_1'], label = behavior_legend[lab], s=s, alpha=alpha)
     
     fig.legend()
     
@@ -385,7 +394,7 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], ds=1, sep_da
             # same data labels
             else:
                 label = '_'*num+'data'
-            
+            print(df)
             ax.scatter(df['dim_0'], df['dim_1'], c = colors, label = label)
     
     # show legend if seperate data sets

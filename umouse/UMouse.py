@@ -145,7 +145,7 @@ class UMouse:
                print('transform complete, saving data')
                #this_path.join(this_embedding)
                this_embedding.to_csv(target_path_csv)
-            else:
+            else:  
                raise Exception('File '+target_path+' not found,' + "Be sure you run the fit method first")
     
         
