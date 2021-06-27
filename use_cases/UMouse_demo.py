@@ -10,7 +10,7 @@ It is best run via the Spyder IDE with the matplotlib back end set to:
 %matplotlib
 
 Drop box link for demo behavior dataframes
-https://www.dropbox.com/sh/sn1ru8sf19icb4u/AAA7Q70qVq2XwVSMywmG0FOpa?dl=0
+
 
 Download the two dataframes to a local directory. 
 
@@ -45,12 +45,14 @@ import numpy as np
 
 #%% generate mwt and UMAP embedding for expert mice
 
+#initialize the UMouse class object and set parameters for the morlet wavelet transform and UMAP embedding
 um_estimate = UMouse(n_frequencies=25, f_sample=250, fmin=1, fmax=None, n_neighbors=15, n_components=2)
 
 # instruct UMouse to use specific columns of the data frame for the embedding. 
 # in this case columns refer to all four paws (Front/Back Left/Right) and 3 axes for each paw (X,Y,Z)
 columns_list = 'BLX', 'BLY', 'BLZ', 'FLX', 'FLY', 'FLZ', 'FRX', 'FRY', 'FRZ', 'BRX', 'BRY', 'BRZ'
 
+#set first argument equal to list of filenames for datasets to be analyzed
 df = ['201226_000_behavior_df',
       '201227_000_behavior_df'
       ]
@@ -60,6 +62,7 @@ fit_data = um_estimate.fit(df, fr_per_sess=10000, columns=columns_list)
 
 #%% transform data mice
 
+#pass a list of filenames to the transform method. It will automatically look for versions of those files tagged with "_mwt"
 um_estimate.transform(df)
 
 #%% use UMouse_Plotter_functions to visualize the UMAP embedding in 2 dimensions

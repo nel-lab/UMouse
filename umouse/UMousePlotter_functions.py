@@ -5,7 +5,19 @@ Created on Thu Jun  3 11:02:23 2021
 
 @authors: Jake Heffley and jimmytabet
 
-Plotting module for UMouse.
+Plotting module for visualizing UMAP embedding space produced by UMouse.py.
+
+Functions:
+    plot_embedding()
+    plot_gradient_var()
+    vector_field_plot()
+    plot_embedding_behavior_labels()
+    get_points_high_dim()
+    play()
+Class Object interactive() with methods:
+    get_points()
+    plot_traces():
+    behavior_montage()  
 """
 
 #%% imports
