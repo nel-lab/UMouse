@@ -4,7 +4,7 @@ Repo for analyzing and visualizing DLC data. The package uses a python implement
 - Compute the UMAP transform of data (from the UMAP-learn package [UMAP](https://umap-learn.readthedocs.io/en/latest/) )
 - Visualize a low-dimensional representation of behavior and highlights behavioral events
 
-# installation
+# Installation
 - Install Anaconda
 - run ```conda env create -f environment.yml -n UMouse```
 - run ```conda activate UMouse```
@@ -22,12 +22,12 @@ Repo for analyzing and visualizing DLC data. The package uses a python implement
 > This script contains multiple plotting functions and a class object for visualizing the UMAP embedding of your data. The interactive features may require the matplotlib backend set to ```%matplotlib```
 > 
 > Functions:  
-> plot_embedding()  
-> plot_gradient_var()  
-> vector_field_plot()  
-> plot_embedding_behavior_labels()  
-> get_points_high_dim()  
-> play()  
+> plot_embedding() Make a scatterplot of the UMAP embedding.  
+> plot_continuous_var() Make a scatterplot with color axis representing a continuous variable such as locomotion velocity.   
+> vector_field_plot() Make a quiver plot in which arrows indicate the local dynamics within the UMAP embedding.  
+> plot_categorical_var() Make scatterplot where color axis represents categorical variables such as reward times.  
+> get_points_high_dim() Enter coordinates of points to plot traces/movies if the UMAP embedding is > 2 dimensions  
+> play() Play the montage movie created by interactive.behavior_montage()  
 > 
 > Class Object interactive() with methods:  
 > get_points() Select points from the UMAP embedding to plot either DLC traces or raw movies  

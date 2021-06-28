@@ -138,7 +138,7 @@ class UMouse:
                print('Found file: ' + target_path)
                spect_data = np.load(target_path)
                #transform the new dataset
-               print('file loaded, embedding data')
+               print('file loaded, embedding data. This may take a few minutes.')
                this_embedding = self.UMAP.transform(spect_data)
                this_embedding = pd.DataFrame(this_embedding, columns=['dim_' + str(i) for i in range(this_embedding.shape[1])])
                #save the new embedding

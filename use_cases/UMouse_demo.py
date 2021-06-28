@@ -4,13 +4,16 @@
 """
 @author: JakeHeffley
 
-UMouse demo file for fitting a umap embedding and visualizing the results. 
+UMouse demo file for fitting a UMAP embedding and visualizing the results. 
 It is best run via the Spyder IDE with the matplotlib back end set to:
 
 %matplotlib
 
 Drop box link for demo behavior dataframes
 https://www.dropbox.com/sh/sn1ru8sf19icb4u/AAA7Q70qVq2XwVSMywmG0FOpa?dl=0
+*NOTE: Only the .csv files are required for most of the demo. The .mp4 files 
+are only requied to utilize the behavior_montage method of the interactive 
+class object.
 
 Download the two dataframes to a local directory. 
 
@@ -20,7 +23,7 @@ of trial/behavioral events such as the obstacle periods, reward delivery, and
 licking.
 
 The demo will take the xyz positional coordinates for each paw and transform them 
-using the morlet wavelet transform. Next, a subset of the wavelet data will be 
+using the Morlet wavelet transform. Next, a subset of the wavelet data will be 
 used to fit a 2 dimensional UMAP embedding. For the purposes of this demo both
 the number of frames used to fit the embedding and the total number of frames 
 have been limited. 
@@ -44,13 +47,18 @@ sys.path.append('path/to/UMouse')
 '''
 
 from umouse.UMouse import UMouse
-import umouse.UMousePlotter_functions as UMPlot
+import umouse.UMousePlotter as UMPlot
 import pandas as pd
 import numpy as np
 
-#%%  set cd to the folder containing the two demo dataframes
-# import os
-# os.chdir('data_path_name_here')
+#%% Set pathname to the folder containing the two demo dataframes
+
+
+
+data_path = 'local/path/to/dataframes/folder/'
+
+
+
 
 #%% generate mwt and UMAP embedding for mice
 
@@ -62,14 +70,16 @@ um_estimate = UMouse(n_frequencies=25, f_sample=250, fmin=1, fmax=None, n_neighb
 columns_list = 'BLX', 'BLY', 'BLZ', 'FLX', 'FLY', 'FLZ', 'FRX', 'FRY', 'FRZ', 'BRX', 'BRY', 'BRZ'
 
 #set first argument equal to list of filenames for datasets to be analyzed
-df = ['201226_000_behavior_df',
-      '201227_000_behavior_df'
+df = [data_path +'201226_000_behavior_df.csv',
+      data_path + '201227_000_behavior_df.csv'
       ]
 
 #use 10000 frames from each dataset to fit the embedding model
 fit_data = um_estimate.fit(df, fr_per_sess=10000, columns=columns_list)
 
-#%% transform data mice
+#%% transform data 
+
+#This step may take 2-6 minutes depending on your compute power. 
 
 #pass a list of filenames to the transform method. It will automatically look for versions of those files tagged with "_mwt"
 um_estimate.transform(df)
@@ -77,7 +87,7 @@ um_estimate.transform(df)
 #%% use UMouse_Plotter_functions to visualize the UMAP embedding in 2 dimensions
 
 #set paths for umap embedding files
-embedding_paths = [this_df + '_umap.csv' for this_df in df]
+embedding_paths = [this_df.split('.')[0] + '_umap.csv' for this_df in df]
 
 #%% plot UMAP embedding. Each frame/timepoint in the transformed dataset will be 
 # represented by a point in the 2 dimnesional umap embedding space. Timing of 
@@ -95,7 +105,7 @@ behav_df = pd.read_csv(df[0], usecols=['rewardBool', 'obstacleBool'])
 behavior_labels = behav_df['rewardBool'].to_numpy(dtype='int')
 behavior_labels[np.where(behav_df['obstacleBool']==1)] = 2
 
-UMPlot.plot_embedding_behavior_labels(embedding_paths[0], behavior_labels, behavior_legend, ds=1, save=False,
+UMPlot.plot_categorical_vars(embedding_paths[0], behavior_labels, behavior_legend, ds=1, save=False,
                                       s=0.4, alpha=0.5)
 
 #%% Quiver plot will show how the points move through the umap embedding space 
@@ -103,7 +113,9 @@ UMPlot.plot_embedding_behavior_labels(embedding_paths[0], behavior_labels, behav
 # of the location of the subsequent frame's location in embedding space.
 # if down_samp >1 then arrows will show the location of the next frame included
 # post down sampling. 
-
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 #plot a single dataset for the quiver plot
 embedding = pd.read_csv(embedding_paths[0], index_col=0)
 
@@ -116,7 +128,7 @@ UMPlot.vector_field_plot(embedding, down_samp=1, z_axis='direction')
 velocity_arr = pd.read_csv(df[0], usecols=['velVar']).to_numpy()
 
 #color code UMAP embedding points according to velocity 
-UMPlot.plot_gradient_var(embedding, z_var=velocity_arr, ds=1, title_str='locomotion velocity')
+UMPlot.plot_continuous_var(embedding, z_var=velocity_arr, ds=1, title_str='locomotion velocity')
 
 #%% Interactive plots 
 
@@ -124,8 +136,8 @@ UMPlot.plot_gradient_var(embedding, z_var=velocity_arr, ds=1, title_str='locomot
 
 df_path = df[0]
 umap_path = embedding_paths[0]
-video_path = '200120_000_run.mp4'
-save_path = '200120_000_montage.avi'
+video_path = data_path + '201226_000_run.mp4'
+save_path = data_path + '201226_000_montage.avi'
 
 fps = 250
 

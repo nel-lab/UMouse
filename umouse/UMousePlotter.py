@@ -9,9 +9,9 @@ Plotting module for visualizing UMAP embedding space produced by UMouse.py.
 
 Functions:
     plot_embedding()
-    plot_gradient_var()
+    plot_continuous_var()
     vector_field_plot()
-    plot_embedding_behavior_labels()
+    plot_ecategorical_vars()
     get_points_high_dim()
     play()
 Class Object interactive() with methods:
@@ -116,7 +116,7 @@ def load_dfs(dfs):
     
     return dfs_all
 
-def plot_gradient_var(embedding, z_var, ds=1, title_str=None):
+def plot_continuous_var(embedding, z_var, ds=1, title_str=None):
     """
     
     Parameters
@@ -232,7 +232,7 @@ def vector_field_plot(umap_embedding, down_samp=1, z_axis='direction'):
     plt.title(z_axis + ' quiver plot of umap embedding trajectories')
     
     
-def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, save=False, s=None, alpha=None):
+def plot_categorical_vars(dfs, behavior_labels, behavior_legend, ds=1, save=False, s=None, alpha=None):
     '''
     Plot UMAP embedding with behavior labels.
 
@@ -309,7 +309,13 @@ def plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend, ds=1, 
 
             ax.scatter(df['dim_0'], df['dim_1'], label = behavior_legend[lab], s=s, alpha=alpha)
     
-    fig.legend()
+    #set figure legend 
+    lgnd = plt.legend(loc="lower left", numpoints=1, fontsize=8)
+
+    #change the marker size manually for legend
+    for i in range(0,len(lgnd.legendHandles)):
+        lgnd.legendHandles[i]._sizes = [30]
+        lgnd.legendHandles[i]._alpha = [1]
     
     # save
     if isinstance(save, str):
@@ -366,7 +372,7 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], ds=1, sep_da
             behavior_legend = [f'behavior {num+1}' for num in range(max(np.unique(behavior_labels))+1)]
         
         # plot embedding with behavior labels
-        fig, ax = plot_embedding_behavior_labels(dfs, behavior_labels, behavior_legend,
+        fig, ax = plot_ecategorical_vars(dfs, behavior_labels, behavior_legend,
                                                  ds=ds, save=save)
         return fig, ax
     
@@ -1084,7 +1090,7 @@ class interactive():
                     
         if video_path.lower().endswith('.mp4'):
             #open mp4 movie
-            cap = cv2.VideoCapture('run.mp4')
+            cap = cv2.VideoCapture(video_path)
 
             # save montage of points for each frame
             
