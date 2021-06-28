@@ -10,7 +10,7 @@ It is best run via the Spyder IDE with the matplotlib back end set to:
 %matplotlib
 
 Drop box link for demo behavior dataframes
-
+https://www.dropbox.com/sh/sn1ru8sf19icb4u/AAA7Q70qVq2XwVSMywmG0FOpa?dl=0
 
 Download the two dataframes to a local directory. 
 
@@ -34,6 +34,15 @@ data.
 """
 
 #%% import
+
+# Add UMouse repo to PYTHONPATH!
+# if using Spyder, click on Python logo in top bar to add to PYTHONPATH
+# if using Jupyter Notebook:
+'''
+import sys
+sys.path.append('path/to/UMouse')
+'''
+
 from umouse.UMouse import UMouse
 import umouse.UMousePlotter_functions as UMPlot
 import pandas as pd
@@ -43,7 +52,7 @@ import numpy as np
 # import os
 # os.chdir('data_path_name_here')
 
-#%% generate mwt and UMAP embedding for expert mice
+#%% generate mwt and UMAP embedding for mice
 
 #initialize the UMouse class object and set parameters for the morlet wavelet transform and UMAP embedding
 um_estimate = UMouse(n_frequencies=25, f_sample=250, fmin=1, fmax=None, n_neighbors=15, n_components=2)
@@ -76,9 +85,11 @@ embedding_paths = [this_df + '_umap.csv' for this_df in df]
 
 #use behavior dataframe to create frame indeces and a legend for behavior events
 #this will be unique to your data. For the demo datasets the categories are:
+
+# 0 = all unlabeled 
 # 1 = a window just after reward delivery
 # 2 = periods in which the animal is jumping over a moving obstacle
-# 0 =  all other frames 
+ 
 behavior_legend = ['other', 'reward', 'obstacle']
 behav_df = pd.read_csv(df[0], usecols=['rewardBool', 'obstacleBool'])
 behavior_labels = behav_df['rewardBool'].to_numpy(dtype='int')

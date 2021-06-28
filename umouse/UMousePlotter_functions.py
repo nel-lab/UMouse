@@ -406,7 +406,6 @@ def plot_embedding(dfs, behavior_labels = [], behavior_legend = [], ds=1, sep_da
             # same data labels
             else:
                 label = '_'*num+'data'
-            print(df)
             ax.scatter(df['dim_0'], df['dim_1'], c = colors, label = label)
     
     # show legend if seperate data sets

@@ -7,6 +7,7 @@ Repo for analyzing and visualizing DLC data. The package uses a python implement
 # installation
 - Install Anaconda
 - run ```conda env create -f environment.yml -n UMouse```
+- run ```conda activate UMouse```
 - run ```pip install behavelet```
 
 # Usage
@@ -19,19 +20,19 @@ Repo for analyzing and visualizing DLC data. The package uses a python implement
 
 ## 2. ```UMousePlotter_functions.py```
 > This script contains multiple plotting functions and a class object for visualizing the UMAP embedding of your data. The interactive features may require the matplotlib backend set to ```%matplotlib```
-
-> Functions:
-> plot_embedding()
-> plot_gradient_var()
-> vector_field_plot()
-> plot_embedding_behavior_labels()
-> get_points_high_dim()
-> play()
-
-> Class Object interactive() with methods:
-> get_points() Select points from the UMAP embedding to plot either DLC traces or raw movies
-> plot_traces() Plot DLC traces from selected limbs in windows around the points selected in get_points()
-> behavior_montage() Plot raw movies from selected limbs in windows around the points selected in get_points()
+> 
+> Functions:  
+> plot_embedding()  
+> plot_gradient_var()  
+> vector_field_plot()  
+> plot_embedding_behavior_labels()  
+> get_points_high_dim()  
+> play()  
+> 
+> Class Object interactive() with methods:  
+> get_points() Select points from the UMAP embedding to plot either DLC traces or raw movies  
+> plot_traces() Plot DLC traces from selected limbs in windows around the points selected in get_points()  
+> behavior_montage() Plot raw movies from selected limbs in windows around the points selected in get_points()  
 
 # Demo
 > A demo is available in ```use_cases/UMouse_demo.py``` The demo uses datasets accessible on [Dropbox](https://www.dropbox.com/sh/sn1ru8sf19icb4u/AAA7Q70qVq2XwVSMywmG0FOpa?dl=0)
