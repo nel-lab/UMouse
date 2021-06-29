@@ -38,14 +38,6 @@ data.
 
 #%% import
 
-# Add UMouse repo to PYTHONPATH!
-# if using Spyder, click on Python logo in top bar to add to PYTHONPATH
-# if using Jupyter Notebook:
-'''
-import sys
-sys.path.append('path/to/UMouse')
-'''
-
 from umouse.UMouse import UMouse
 import umouse.UMousePlotter as UMPlot
 import pandas as pd
@@ -136,8 +128,8 @@ UMPlot.plot_continuous_var(embedding, z_var=velocity_arr, ds=1, title_str='locom
 
 df_path = df[0]
 umap_path = embedding_paths[0]
-video_path = data_path + '201226_000_run.mp4'
-save_path = data_path + '201226_000_montage.avi'
+video_path = data_path + '201226_run.mp4'
+save_path = data_path + '201226_montage.avi'
 
 fps = 250
 
@@ -156,7 +148,7 @@ um_int.plot_traces(df_path, ['FLX', 'FLY', 'FLZ'])
 um_int.behavior_montage(video_path, save_path, fps) 
 
 #press q to stop the movie
-um_int.play(save_path, loop=False, title='Behavior movie for selected points')
+UMPlot.play(save_path, loop=True, title='Behavior movie for selected points')
 
 
 

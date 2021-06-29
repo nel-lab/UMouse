@@ -8,6 +8,8 @@ Repo for analyzing and visualizing DLC data. The package uses a python implement
 - Install Anaconda
 - run ```conda env create -f environment.yml -n UMouse```
 - run ```conda activate UMouse```
+- change directory to UMouse repo ```cd [path/to/local/repo]```
+- run ```pip install -e.```
 - run ```pip install behavelet```
 
 # Usage
