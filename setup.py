@@ -14,17 +14,3 @@ setup(
       install_requires=['']
       )
 
-# 'python=3.7',
-# 'pandas',
-# 'scikit-learn',
-# 'scikit-image',
-# 'opencv',
-# 'h5py',
-# 'ipython',
-# 'ipyparallel',
-# 'jupyter',
-# 'matplotlib',
-# 'numpy',
-# 'spyder',
-# 'scipy',
-# 'umap-learn'

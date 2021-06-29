@@ -5,10 +5,11 @@ Repo for analyzing and visualizing DLC data. The package uses a python implement
 - Visualize a low-dimensional representation of behavior and highlights behavioral events
 
 # Installation
-- Install Anaconda
+- Install [Anaconda](https://www.anaconda.com/products/individual)
+- clone the [UMouse directory](https://github.com/nel-lab/UMouse.git)
+- change directory to UMouse repo ```cd [path/to/local/repo]```
 - run ```conda env create -f environment.yml -n UMouse```
 - run ```conda activate UMouse```
-- change directory to UMouse repo ```cd [path/to/local/repo]```
 - run ```pip install -e.```
 - run ```pip install behavelet```
 
