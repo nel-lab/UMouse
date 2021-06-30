@@ -42,6 +42,7 @@ from umouse.UMouse import UMouse
 import umouse.UMousePlotter as UMPlot
 import pandas as pd
 import numpy as np
+import os
 
 #%% Set pathname to the folder containing the two demo dataframes
 
@@ -62,8 +63,8 @@ um_estimate = UMouse(n_frequencies=25, f_sample=250, fmin=1, fmax=None, n_neighb
 columns_list = 'BLX', 'BLY', 'BLZ', 'FLX', 'FLY', 'FLZ', 'FRX', 'FRY', 'FRZ', 'BRX', 'BRY', 'BRZ'
 
 #set first argument equal to list of filenames for datasets to be analyzed
-df = [data_path +'201226_000_behavior_df.csv',
-      data_path + '201227_000_behavior_df.csv'
+df = [os.path.join(data_path, '201226_000_behavior_df.csv'),
+      os.path.join(data_path, '201227_000_behavior_df.csv')
       ]
 
 #use 10000 frames from each dataset to fit the embedding model
@@ -105,14 +106,12 @@ UMPlot.plot_categorical_vars(embedding_paths[0], behavior_labels, behavior_legen
 # of the location of the subsequent frame's location in embedding space.
 # if down_samp >1 then arrows will show the location of the next frame included
 # post down sampling. 
-import matplotlib
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
+
 #plot a single dataset for the quiver plot
 embedding = pd.read_csv(embedding_paths[0], index_col=0)
 
 #down sample by 25x to improve plot visibility
-UMPlot.vector_field_plot(embedding, down_samp=1, z_axis='direction')
+UMPlot.vector_field_plot(embedding, down_samp=1, z_axis='direction', scale=150, norm_arrow_len=0)
 
 #%% plot gradient plot for velocity 
 

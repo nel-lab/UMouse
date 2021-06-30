@@ -171,7 +171,7 @@ def plot_continuous_var(embedding, z_var, ds=1, title_str=None):
     plt.xlabel('UMAP Dim 1')
     plt.ylabel('UMAP Dim 2')
 
-def vector_field_plot(umap_embedding, down_samp=1, z_axis='direction'):
+def vector_field_plot(umap_embedding, down_samp=1, z_axis='direction', scale=100, norm_arrow_len=0):
     """
     Parameters
     ----------
@@ -183,6 +183,10 @@ def vector_field_plot(umap_embedding, down_samp=1, z_axis='direction'):
         value to plot on the z axis. 'magnitude' or 'direction'.
         magnitude corresponds to the distance between a given point and the next point in the umap embedding.
         direction corresponds to the angle of the vector from one umap point to the next. 
+    scale : int, optional
+        Adjusts arrow length for visibility. Larger values yield shorter arrows. The default is 100.
+    norm_arrow_len : int, optional
+        if > 0 then it converts all arrow lengths to be equal to value entered. The default is 0.
 
     Returns
     -------
@@ -207,28 +211,32 @@ def vector_field_plot(umap_embedding, down_samp=1, z_axis='direction'):
     v = y[1::] - y[0:-1]
     uv = np.vstack((u,v))
 
+    #calculate magnitude of each vector and set normalization for c axis
+    dist = np.linalg.norm(uv,axis=0)
+    norm = mpl.colors.Normalize()
+    
     # use quiver to plot the arrows
     fig = plt.figure(dpi=200)
     
     if z_axis == 'magnitude':
-        #calculate magnitude of each vector
-        dist = np.linalg.norm(uv,axis=0)
-        normdist = mpl.colors.Normalize()
-        normdist.autoscale(dist)
-        plt.quiver(x[0:-1], y[0:-1], u, v, color=cmap(normdist(dist)))
+        norm.autoscale(dist)
+        plt.quiver(x[0:-1], y[0:-1], u, v, color=cmap(norm(dist)))
+        
     elif z_axis == 'direction':
+        #normalize length of arrows
+        if norm_arrow_len > 0:
+            u = np.divide(u,dist) * norm_arrow_len
+            v = np.divide(v,dist) * norm_arrow_len
+            
         #calculate angle of each vector
         theta = np.degrees(np.arctan2(*uv[::-1])) % 360.0
-        norm = mpl.colors.Normalize()
         norm.autoscale(theta)
-        
-        # u = np.divide(u, abs(u))
-        # v = np.divide(v, abs(u))
         plt.quiver(x[0:-1], y[0:-1], u, v, color=cmap(norm(theta)),
-                   scale=100)
+                   scale=scale)
     
-    plt.colorbar(mpl.cm.ScalarMappable(cmap=cmap))
-    # plt.clim(0,360)
+    cbar = plt.colorbar(mpl.cm.ScalarMappable(cmap=cmap), ticks=[0, 1])
+    cbar.ax.set_yticklabels(['0', '360'])
+    
     plt.title(z_axis + ' quiver plot of umap embedding trajectories')
     
     
