@@ -3,6 +3,7 @@ Repo for analyzing and visualizing DLC data. The package uses a python implement
 - Compute wavelet transform (it uses the [behavelet package](https://pypi.org/project/behavelet/)
 - Compute the UMAP transform of data (from the UMAP-learn package [UMAP](https://umap-learn.readthedocs.io/en/latest/) )
 - Visualize a low-dimensional representation of behavior and highlights behavioral events
+
 UMouse has been tested on Linux Ubuntu and MacOS. First the user must install the dependencies as outlined in the installation instructions. UMouse is run using the Python via an Anaconda distribution. 
 
 # Installation
