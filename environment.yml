@@ -10,7 +10,7 @@ dependencies:
 - ipython
 - ipyparallel
 - jupyter
-- matplotlib
+- matplotlib=3.4
 - numpy
 - spyder
 - scipy

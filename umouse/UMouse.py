@@ -140,6 +140,8 @@ class UMouse:
         for this_path in transform_path:
             if run_id is not None:
                 output_suffix = run_id + '_umap.csv'
+            else:
+                output_suffix = '_umap.csv'
                 
             if this_path.endswith('_mwt.npy'):
                 target_path = this_path
